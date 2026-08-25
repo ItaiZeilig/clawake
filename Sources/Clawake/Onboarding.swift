@@ -15,6 +15,12 @@ final class OnboardingController {
             w.styleMask = [.titled, .closable]
             w.setContentSize(NSSize(width: 460, height: 520))
             w.isReleasedWhenClosed = false
+            // The window is dark-themed regardless of the system light/dark setting,
+            // so force dark appearance (otherwise light mode draws black text on the
+            // dark background and a mismatched light title bar).
+            w.appearance = NSAppearance(named: .darkAqua)
+            w.titlebarAppearsTransparent = true
+            w.backgroundColor = NSColor(calibratedRed: 0.09, green: 0.09, blue: 0.10, alpha: 1)
             w.center()
             window = w
         }
@@ -92,6 +98,7 @@ struct OnboardingView: View {
         }
         .frame(width: 460, height: 520)
         .background(bg)
+        .environment(\.colorScheme, .dark)
         .onAppear(perform: refresh)
     }
 
