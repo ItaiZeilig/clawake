@@ -1,0 +1,4 @@
+.build/
+release/
+*.dmg
+.DS_Store
