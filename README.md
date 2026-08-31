@@ -8,7 +8,7 @@ while the Mac is shut in your bag or on your desk.
 
 - **Website:** https://itaizeilig.github.io/clawake/
 - **Download:** [latest release](https://github.com/ItaiZeilig/clawake/releases/latest) (notarized DMG)
-- **Requires:** macOS 13 (Ventura) or later, Apple Silicon
+- **Requires:** macOS 13 (Ventura) or later. Universal binary (Apple Silicon and Intel)
 
 ## What it does
 

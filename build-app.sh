@@ -12,10 +12,10 @@ ENTITLEMENTS="Clawake.entitlements"
 EDITION="${EDITION:-standard}"
 if [ "$EDITION" = "enterprise" ]; then
   ENTERPRISE_PLIST='  <key>ClawakeEnterprise</key><true/>'
-  DMG="release/Clawake-Enterprise-${VERSION}-arm64.dmg"
+  DMG="release/Clawake-Enterprise-${VERSION}.dmg"
 else
   ENTERPRISE_PLIST='  <key>ClawakeEnterprise</key><false/>'
-  DMG="release/Clawake-${VERSION}-arm64.dmg"
+  DMG="release/Clawake-${VERSION}.dmg"
 fi
 echo "Edition: $EDITION"
 
@@ -46,15 +46,15 @@ elif [ -n "$NOTARY_PROFILE" ]; then
 fi
 
 echo "Building release binary..."
-swift build -c release >/dev/null
+swift build -c release --arch arm64 --arch x86_64 >/dev/null
 
 echo "Assembling $APP ..."
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/release/Clawake "$APP/Contents/MacOS/Clawake"
+cp .build/apple/Products/Release/Clawake "$APP/Contents/MacOS/Clawake"
 
 # Privileged helper daemon (SMAppService) + its embedded LaunchDaemon plist.
-cp .build/release/ClawakeHelper "$APP/Contents/MacOS/ClawakeHelper"
+cp .build/apple/Products/Release/ClawakeHelper "$APP/Contents/MacOS/ClawakeHelper"
 mkdir -p "$APP/Contents/Library/LaunchDaemons"
 cat > "$APP/Contents/Library/LaunchDaemons/app.clawake.helper.plist" <<'PLIST2'
 <?xml version="1.0" encoding="UTF-8"?>

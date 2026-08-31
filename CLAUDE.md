@@ -13,7 +13,7 @@ to avoid Electron's ~100 MB bloat.
 - **Bundle id:** `app.clawake.desktop`
 - **Version:** 1.0.0
 - **Min macOS:** 13.0 (Ventura)
-- **Arch:** built for Apple Silicon (arm64); universal is a later step
+- **Arch:** universal binary (arm64 + x86_64); runs natively on Apple Silicon and Intel
 - **Support email:** itaizeilig1@gmail.com
 
 ## How it keeps the Mac awake (the two layers)
@@ -187,8 +187,9 @@ variables, so no account details are hardcoded.
 3. **Distribute.** A one-page landing site (free on GitHub Pages) with a Download
    button pointing at a **GitHub Releases** DMG. Add **Sparkle** later for
    auto-updates; a Homebrew Cask is an easy bonus.
-4. **Universal binary + icons.** Build `arm64` + `x86_64` if you want Intel support;
-   confirm the app icon set is complete.
+4. **Universal binary (done).** `build-app.sh` builds `arm64` + `x86_64`
+   (`swift build --arch arm64 --arch x86_64`), so the app and helper are fat and run
+   natively on Apple Silicon and Intel. DMGs are named without an arch suffix.
 
 ## Working notes for Claude
 
