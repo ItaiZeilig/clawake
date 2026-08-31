@@ -22,6 +22,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var timer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Hidden render mode for marketing/preview shots of the real panel.
+        if let idx = CommandLine.arguments.firstIndex(of: "--render-panel"),
+           idx + 1 < CommandLine.arguments.count {
+            renderPanel(to: CommandLine.arguments[idx + 1])
+            exit(0)
+        }
+        if let idx = CommandLine.arguments.firstIndex(of: "--render-settings"),
+           idx + 1 < CommandLine.arguments.count {
+            renderSettings(to: CommandLine.arguments[idx + 1])
+            exit(0)
+        }
+
         NSApp.setActivationPolicy(.accessory)  // menu-bar only, no dock
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -40,8 +52,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.controller.tick()
         }
 
-        if !controller.didOnboard { openSettings() }
         refreshIcon()
+
+        // First launch: open the menu bar panel (not the Settings window), the
+        // way most menu bar apps introduce themselves. Deferred one runloop tick
+        // so the status item is laid out first, otherwise the popover can open
+        // detached from the menu bar with a gap.
+        if !controller.didOnboard {
+            controller.markOnboarded()
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let button = self.statusItem.button else { return }
+                NSApp.activate(ignoringOtherApps: true)
+                self.popoverController.show(from: button)
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

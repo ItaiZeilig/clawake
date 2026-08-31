@@ -63,16 +63,27 @@ final class PopoverController {
         let view = PopoverView(
             controller: controller, style: style,
             onSetup: { onOpenSetup() }, onQuit: { NSApp.terminate(nil) })
-        popover.contentViewController = NSHostingController(rootView: view)
+        let hosting = NSHostingController(rootView: view)
+        // Size the popover exactly to the SwiftUI content. Without this the
+        // hosting controller can reserve extra space, which shows up as a gap
+        // between the popover and the menu bar.
+        hosting.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = hosting
     }
 
     func toggle(from button: NSStatusBarButton) {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            show(from: button)
         }
+    }
+
+    /// Show the popover anchored to the status item (no-op if already shown).
+    func show(from button: NSStatusBarButton) {
+        guard !popover.isShown else { return }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 }
 

@@ -182,3 +182,22 @@ final class Controller: ObservableObject {
         }
     }
 }
+
+extension Controller {
+    /// Fill the published display state directly, for rendering a marketing or
+    /// preview image of the real panel. Reads no sensors, writes no config, and
+    /// creates no power assertions. Same-file so it can set the private(set) fields.
+    func fillForRender(
+        isOn: Bool, awake: Bool, statusTitle: String, powerText: String,
+        thermalText: String, thermalLevel: ThermalLevel, lidClosedOn: Bool
+    ) {
+        self.isOn = isOn
+        self.awake = awake
+        self.statusTitle = statusTitle
+        self.powerText = powerText
+        self.thermalText = thermalText
+        self.thermalLevelRaw = thermalLevel.rawValue
+        self.lidClosedOn = lidClosedOn
+        self.lidApprovalNeeded = false
+    }
+}

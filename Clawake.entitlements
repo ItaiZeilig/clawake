@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Clawake runs under the hardened runtime (required for notarization).
+    It keeps the Mac awake via IOPMAssertion and, for the lid-closed layer,
+    spawns helper processes (pmset, osascript, visudo, sudo). Spawning child
+    processes is allowed under the hardened runtime with no exception, so no
+    JIT / unsigned-memory / DYLD entitlements are needed. This app is NOT
+    sandboxed (the lid-closed feature cannot run in the App Sandbox), so there
+    are deliberately no com.apple.security.app-sandbox keys here.
+  -->
+</dict>
+</plist>

@@ -61,10 +61,17 @@ struct SettingsView: View {
             rows
             Divider()
             HStack {
-                Button(action: onClose) { Text("Done").foregroundColor(.secondary) }
-                    .buttonStyle(.plain)
-                Spacer()
                 Text("v\(appVersion())").font(.system(size: 11)).foregroundColor(.secondary)
+                Spacer()
+                Button(action: onClose) {
+                    Text("Done")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24).padding(.vertical, 7)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(orange))
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal, 20).padding(.vertical, 14)
         }

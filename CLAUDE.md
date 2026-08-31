@@ -125,14 +125,30 @@ guards) is possible, but it must drop lid-closed. Not the current priority.
 
 ## Next steps (to productionize the notarized DMG)
 
-Prerequisite: an **Apple Developer Program** account ($99/yr) and a **Developer ID
-Application** certificate. The user owns this step.
+**Tooling is ready (done).** `build-app.sh` now signs with a Developer ID identity +
+hardened runtime + secure timestamp + `Clawake.entitlements`, builds the DMG, and
+(when a notary profile is set) submits to Apple and staples both the `.app` and the
+`.dmg`. Icons are vendored in `assets/` so the build no longer depends on the old
+out-of-repo `cc-caffeine/assets` folder (which is gone). With no identity set it
+still ad-hoc signs for local runs. The hardened-runtime signing command and the
+entitlements file are verified valid (`flags=0x10000(runtime)`, strict verify passes).
 
-1. **Sign + notarize.** Replace the ad-hoc `codesign --sign -` in `build-app.sh`
-   with the Developer ID identity, add the **hardened runtime** (`--options runtime`),
-   then `xcrun notarytool submit release/Clawake-1.0.0-arm64.dmg --keychain-profile
-   <profile> --wait` and `xcrun stapler staple` both the `.app` and the `.dmg`.
-   Hardened runtime is required for notarization.
+**Signing identity (done): personal Individual account.** The release is signed
+under **Developer ID Application: Itai Zeilig (UXXB9YTYKF)**, Apple ID
+`itaizeilig1@gmail.com`. The earlier Sosna Moving Ltd (`LZ45Q8WB49`) Developer ID
+cert and notary profile were removed on purpose; do not use Sosna to sign Clawake.
+A stored notary profile named `clawake-notary` holds the personal credentials.
+(A pre-existing *Apple Distribution: Sosna Moving Ltd* cert may still be in the
+keychain for unrelated company work; it is not used by Clawake.)
+
+1. **Sign + notarize (one command):**
+   ```
+   export DEVID_IDENTITY="Developer ID Application: Itai Zeilig (UXXB9YTYKF)"
+   export NOTARY_PROFILE=clawake-notary
+   ./build-app.sh
+   ```
+   The script does hardened-runtime sign → DMG → `notarytool submit --wait` →
+   `stapler staple` (app + DMG) → Gatekeeper check, all in that run.
 2. **(Recommended) Upgrade the lid helper.** Replace the `sudoers` approach with a
    proper **`SMAppService`** privileged launchd daemon (macOS 13+) that runs as root
    and talks to the app over XPC. Cleaner than editing sudoers, survives OS updates,
