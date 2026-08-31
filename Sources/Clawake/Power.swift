@@ -61,6 +61,19 @@ final class PowerController {
         }
     }
 
+    /// Reconcile the tracked deep state with what is actually set on the system.
+    /// A previous run that was force-quit or crashed while lid-closed was engaged
+    /// leaves `SleepDisabled 1` behind; adopting it here lets `apply()` clear it on
+    /// this launch when it is no longer wanted (or keep it when it still is), so the
+    /// Mac is never left permanently unable to sleep.
+    func adoptDeepState() {
+        let r = runProcess("/usr/bin/pmset", ["-g"])
+        guard r.ok else { return }
+        if let line = r.stdout.split(separator: "\n").first(where: { $0.contains("SleepDisabled") }) {
+            deepEngaged = line.trimmingCharacters(in: .whitespaces).hasSuffix("1")
+        }
+    }
+
     private func setDeep(_ on: Bool) -> Bool {
         let arg = on ? "1" : "0"
         // Password-free path: pmset directly (matches the sudoers NOPASSWD rule).

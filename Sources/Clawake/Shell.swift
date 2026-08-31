@@ -22,8 +22,16 @@ func runProcess(_ launchPath: String, _ args: [String]) -> ShellResult {
     } catch {
         return ShellResult(ok: false, stdout: "", stderr: "\(error)")
     }
+    // Drain stderr on a background queue while draining stdout here, so a command
+    // that fills one pipe buffer can never deadlock against the other.
+    var eData = Data()
+    let sem = DispatchSemaphore(value: 0)
+    DispatchQueue.global().async {
+        eData = err.fileHandleForReading.readDataToEndOfFile()
+        sem.signal()
+    }
     let oData = out.fileHandleForReading.readDataToEndOfFile()
-    let eData = err.fileHandleForReading.readDataToEndOfFile()
+    sem.wait()
     p.waitUntilExit()
     return ShellResult(
         ok: p.terminationStatus == 0,

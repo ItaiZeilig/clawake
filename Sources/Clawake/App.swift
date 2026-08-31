@@ -34,6 +34,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        // Single instance only. A second copy would put a duplicate icon in the
+        // menu bar and fight the first over the pmset/IOPMAssertion state, so if
+        // another instance is already running, bring it forward and quit.
+        let myPID = NSRunningApplication.current.processIdentifier
+        let others = NSRunningApplication.runningApplications(
+            withBundleIdentifier: Bundle.main.bundleIdentifier ?? "app.clawake.desktop")
+            .filter { $0.processIdentifier != myPID }
+        if !others.isEmpty {
+            others.first?.activate(options: [])
+            exit(0)
+        }
+
         NSApp.setActivationPolicy(.accessory)  // menu-bar only, no dock
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -47,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller: controller, onOpenSetup: { [weak self] in self?.openSettings() })
 
         controller.onChange = { [weak self] in self?.refreshIcon() }
+        controller.power.adoptDeepState()  // clean up any SleepDisabled left by a crash/force-quit
         controller.tick()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.controller.tick()
