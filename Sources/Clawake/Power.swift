@@ -10,6 +10,8 @@ final class PowerController {
     let helper = HelperClient()
     private var lightAssertion: IOPMAssertionID = 0
     private var lightActive = false
+    private var displayAssertion: IOPMAssertionID = 0
+    private var displayActive = false
     private(set) var deepEngaged = false
     private var deepBusy = false
     private var deepCooldownUntil = Date.distantPast
@@ -51,10 +53,32 @@ final class PowerController {
         }
     }
 
+    /// Keep the display on, and therefore the screen unlocked. No root needed.
+    /// This is the "don't lock" capability; when off, the display sleeps and the
+    /// screen locks on the system's normal schedule.
+    func setKeepDisplayOn(_ on: Bool) {
+        if on && !displayActive {
+            var id: IOPMAssertionID = 0
+            let r = IOPMAssertionCreateWithName(
+                kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+                IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                "Clawake keeping the screen unlocked" as CFString,
+                &id)
+            if r == kIOReturnSuccess { displayAssertion = id; displayActive = true }
+        } else if !on && displayActive {
+            IOPMAssertionRelease(displayAssertion)
+            displayActive = false
+        }
+    }
+
     func releaseAll() {
         if lightActive {
             IOPMAssertionRelease(lightAssertion)
             lightActive = false
+        }
+        if displayActive {
+            IOPMAssertionRelease(displayAssertion)
+            displayActive = false
         }
         if deepEngaged {
             _ = setDeep(false)

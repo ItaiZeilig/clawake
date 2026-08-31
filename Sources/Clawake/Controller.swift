@@ -25,6 +25,11 @@ final class Controller: ObservableObject {
     @Published private(set) var lidClosedOn = true       // the setting
     @Published private(set) var lidApprovalNeeded = false // wanted, but not approved yet
 
+    // Screen-lock feature state. In the enterprise build the app never prevents
+    // locking and the toggle is hidden; `isEnterprise` gates both.
+    @Published private(set) var preventLockOn = true
+    @Published private(set) var isEnterprise = false
+
     // Settings mirrors (so the Settings panel reads live values).
     @Published private(set) var pauseOnLowBattery = true
     @Published private(set) var batteryThreshold = 15
@@ -40,6 +45,7 @@ final class Controller: ObservableObject {
     init() {
         config = loadConfig()
         mode = config.mode
+        isEnterprise = (Bundle.main.infoDictionary?["ClawakeEnterprise"] as? Bool) ?? false
         syncMirrors()
     }
 
@@ -75,6 +81,13 @@ final class Controller: ObservableObject {
     }
 
     func helperReady() -> Bool { power.helperEnabled() }
+
+    /// Standard build only: turn the "don't lock the screen" option on or off.
+    func setPreventLock(_ on: Bool) {
+        config.preventLock = on
+        saveConfig(config)
+        tick()
+    }
 
     func setPauseOnLowBattery(_ on: Bool) {
         config.pauseOnLowBattery = on
@@ -137,6 +150,9 @@ final class Controller: ObservableObject {
                 thermalPaused: thermalPaused, lidClosed: lidActive))
 
         power.apply(decision)
+        // "Don't lock" keeps the display on so the screen never locks. Never in the
+        // enterprise build, and only while the app is actually keeping the Mac awake.
+        power.setKeepDisplayOn(decision.awake && !isEnterprise && config.preventLock)
         lastReason = decision.reason
 
         // Publish UI state.
@@ -172,6 +188,7 @@ final class Controller: ObservableObject {
         mode = config.mode
         isOn = (mode == .on)
         lidClosedOn = config.lidClosed
+        preventLockOn = config.preventLock
         pauseOnLowBattery = config.pauseOnLowBattery
         batteryThreshold = config.battery.min_percent
         onlyOnAC = config.battery.only_on_ac

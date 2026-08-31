@@ -13,6 +13,7 @@ struct ThermalConfig: Codable {
 struct Config: Codable {
     var mode: Mode
     var lidClosed: Bool          // keep awake with the lid shut (needs the helper)
+    var preventLock: Bool        // also keep the display on so the screen never locks
     var pauseOnLowBattery: Bool  // whether the battery floor applies at all
     var battery: BatteryConfig
     var thermal: ThermalConfig
@@ -22,6 +23,7 @@ struct Config: Codable {
     static let defaults = Config(
         mode: .on,
         lidClosed: true,
+        preventLock: true,
         pauseOnLowBattery: true,
         battery: BatteryConfig(min_percent: 15, only_on_ac: false),
         thermal: ThermalConfig(protect: true, cutoff: "serious"),
@@ -31,13 +33,14 @@ struct Config: Codable {
 
     // Tolerate configs written by older builds that lacked the newer keys.
     enum CodingKeys: String, CodingKey {
-        case mode, lidClosed, pauseOnLowBattery, battery, thermal, notifications, didOnboard
+        case mode, lidClosed, preventLock, pauseOnLowBattery, battery, thermal, notifications, didOnboard
     }
 
-    init(mode: Mode, lidClosed: Bool, pauseOnLowBattery: Bool, battery: BatteryConfig,
-         thermal: ThermalConfig, notifications: Bool, didOnboard: Bool) {
+    init(mode: Mode, lidClosed: Bool, preventLock: Bool, pauseOnLowBattery: Bool,
+         battery: BatteryConfig, thermal: ThermalConfig, notifications: Bool, didOnboard: Bool) {
         self.mode = mode
         self.lidClosed = lidClosed
+        self.preventLock = preventLock
         self.pauseOnLowBattery = pauseOnLowBattery
         self.battery = battery
         self.thermal = thermal
@@ -50,6 +53,7 @@ struct Config: Codable {
         let d = Config.defaults
         mode = try c.decodeIfPresent(Mode.self, forKey: .mode) ?? d.mode
         lidClosed = try c.decodeIfPresent(Bool.self, forKey: .lidClosed) ?? d.lidClosed
+        preventLock = try c.decodeIfPresent(Bool.self, forKey: .preventLock) ?? d.preventLock
         pauseOnLowBattery = try c.decodeIfPresent(Bool.self, forKey: .pauseOnLowBattery) ?? d.pauseOnLowBattery
         battery = try c.decodeIfPresent(BatteryConfig.self, forKey: .battery) ?? d.battery
         thermal = try c.decodeIfPresent(ThermalConfig.self, forKey: .thermal) ?? d.thermal

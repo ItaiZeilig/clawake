@@ -49,6 +49,7 @@ struct SettingsView: View {
         VStack(spacing: 14) {
             header
             lidRow
+            if !controller.isEnterprise { lockRow }
             batteryRow
             acRow
             thermalRow
@@ -111,6 +112,17 @@ struct SettingsView: View {
                 : "Your Mac stays awake even when you shut the lid."
         }
         return "Your Mac will sleep when you close the lid."
+    }
+
+    private var lockRow: some View {
+        settingRow(
+            icon: controller.preventLockOn ? "lock.open" : "lock",
+            title: "Don't lock the screen",
+            subtitle: controller.preventLockOn
+                ? "The screen stays on and never locks while Clawake is on."
+                : "The screen turns off and locks on your normal schedule.",
+            isOn: controller.preventLockOn, onToggle: controller.setPreventLock
+        )
     }
 
     private var batteryRow: some View {

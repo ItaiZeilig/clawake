@@ -4,8 +4,20 @@ cd "$(dirname "$0")"
 
 APP="release/Clawake.app"
 VERSION="1.0.0"
-DMG="release/Clawake-${VERSION}-arm64.dmg"
 ENTITLEMENTS="Clawake.entitlements"
+
+# Edition: "standard" (default) or "enterprise". The enterprise build hides the
+# "don't lock the screen" control and never prevents the screen from locking, so it
+# stays compliant with a corporate screen-lock policy.
+EDITION="${EDITION:-standard}"
+if [ "$EDITION" = "enterprise" ]; then
+  ENTERPRISE_PLIST='  <key>ClawakeEnterprise</key><true/>'
+  DMG="release/Clawake-Enterprise-${VERSION}-arm64.dmg"
+else
+  ENTERPRISE_PLIST='  <key>ClawakeEnterprise</key><false/>'
+  DMG="release/Clawake-${VERSION}-arm64.dmg"
+fi
+echo "Edition: $EDITION"
 
 # Icon source: vendored assets/ (self-contained). Falls back to the original
 # out-of-repo asset folder if someone still has it.
@@ -68,6 +80,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>LSMultipleInstancesProhibited</key><true/>
+${ENTERPRISE_PLIST}
   <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>

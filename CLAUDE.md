@@ -41,6 +41,23 @@ daemon/app exiting (that is the point); the app reconciles the real state on lau
 (`adoptDeepState`) to self-heal anything a crash left behind, and `uninstall`
 resets it through the daemon before unregistering.
 
+## Screen lock and the two editions
+
+Separately from sleep, the app can keep the **display** awake via a
+`kIOPMAssertionTypePreventUserIdleDisplaySleep` assertion (no root, auto-released on
+process exit). While held, the screen stays on and never idle-locks. This is the
+"Don't lock the screen" option: config `preventLock` (default on), applied in
+`Controller.tick` only while the app is actually keeping the Mac awake.
+
+Two editions, chosen at build time:
+- **Standard** (default): shows the "Don't lock the screen" toggle, on by default.
+  The Mac stays awake and unlocked; the user can turn locking back on.
+- **Enterprise** (`EDITION=enterprise ./build-app.sh` sets `Info.plist`
+  `ClawakeEnterprise = true`, DMG named `Clawake-Enterprise-...`): hides the toggle
+  and never prevents locking, so the screen still locks on the corporate schedule.
+  `Controller.isEnterprise` reads the plist flag and gates both the UI row and the
+  display assertion. Both editions share the bundle id and the helper daemon.
+
 ## Architecture (file by file)
 
 All source is in `Sources/Clawake/`.
