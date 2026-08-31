@@ -13,7 +13,7 @@ final class OnboardingController {
             let w = NSWindow(contentViewController: NSHostingController(rootView: root))
             w.title = "Clawake Setup"
             w.styleMask = [.titled, .closable]
-            w.setContentSize(NSSize(width: 460, height: 520))
+            w.setContentSize(NSSize(width: 460, height: 400))
             w.isReleasedWhenClosed = false
             // The window is dark-themed regardless of the system light/dark setting,
             // so force dark appearance (otherwise light mode draws black text on the
@@ -40,10 +40,8 @@ struct OnboardingView: View {
     let onClose: () -> Void
 
     @State private var setupDone = false
-    @State private var hooked = false
     @State private var installing = false
     @State private var note1 = ""
-    @State private var note2 = ""
 
     private let bg = Color(red: 0.09, green: 0.09, blue: 0.10)
     private let card = Color(red: 0.13, green: 0.13, blue: 0.15)
@@ -76,17 +74,6 @@ struct OnboardingView: View {
                             }
                         }
                     }
-
-                    cardBox(number: 2, done: hooked, title: "Connect Claude Code (optional)",
-                            body: "Add Clawake's hooks to Claude Code so the Follow Claude sessions mode knows when Claude is working. One click, no restart.") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Button(action: connect) { Text(hooked ? "Connected" : "Connect") }
-                                .disabled(hooked)
-                            if !note2.isEmpty {
-                                Text(note2).font(.caption).foregroundColor(.secondary)
-                            }
-                        }
-                    }
                 }.padding(24)
             }
             Divider()
@@ -96,7 +83,7 @@ struct OnboardingView: View {
                 Spacer()
             }.padding(.horizontal, 24).padding(.vertical, 14)
         }
-        .frame(width: 460, height: 520)
+        .frame(width: 460, height: 400)
         .background(bg)
         .environment(\.colorScheme, .dark)
         .onAppear(perform: refresh)
@@ -141,16 +128,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func connect() {
-        let ok = controller.connectClaude()
-        note2 = ok
-            ? "Connected. New Claude Code sessions will keep your Mac awake."
-            : "Could not update your Claude settings."
-        refresh()
-    }
-
     private func refresh() {
         setupDone = controller.setupComplete
-        hooked = controller.hooksConnected
     }
 }

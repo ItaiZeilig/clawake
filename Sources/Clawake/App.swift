@@ -12,7 +12,6 @@ func carIcon(active: Bool) -> NSImage? {
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let controller = Controller()
-    let server = ControlServer()
     var statusItem: NSStatusItem!
     let menu = NSMenu()
     var timer: Timer?
@@ -30,10 +29,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
 
         controller.onChange = { [weak self] in self?.refresh() }
-        server.onCaffeinate = { [weak self] id in self?.controller.addSession(id, transcript: nil) }
-        server.onUncaffeinate = { [weak self] id in self?.controller.removeSession(id) }
-        server.start()
-
         controller.tick()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.controller.tick()
@@ -45,10 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         controller.shutdown()
-        server.stop()
     }
 
-    // Click opens the setup window until setup is done; afterwards it shows the menu.
     @objc func statusClicked() {
         if controller.setupComplete {
             statusItem.menu = menu
@@ -74,16 +67,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func statusLine() -> String {
         let d = controller.decision
         if !d.awake {
-            if d.reason == "thermal" { return "Paused, Mac is hot" }
-            return controller.currentMode == .off ? "Off, sleep allowed" : "Sleep allowed"
+            switch d.reason {
+            case "thermal": return "Paused, Mac is hot"
+            case "setup": return "Finish setup"
+            default: return controller.currentMode == .off ? "Off, sleep allowed" : "Sleep allowed"
+            }
         }
-        switch controller.currentMode {
-        case .timer: return "Awake, \(controller.timerMinutesLeft) min left"
-        case .always: return "Awake, always"
-        default:
-            let n = controller.activeSessionCount
-            return "Awake, \(n) Claude session\(n == 1 ? "" : "s")"
-        }
+        return "On, keeping your Mac awake"
     }
 
     private func powerLine() -> String {
@@ -96,26 +86,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        addDisabled(statusLine())
-        addDisabled(powerLine())
+        menu.addItem(disabledItem(statusLine()))
+        menu.addItem(disabledItem(powerLine()))
         menu.addItem(.separator())
 
-        addMode("Follow Claude sessions", .sessions)
-        addMode("Always awake", .always)
-        addMode("Off (allow sleep)", .off)
-        menu.addItem(.separator())
-
-        let timerItem = NSMenuItem(title: "Keep awake for…", action: nil, keyEquivalent: "")
-        let timerMenu = NSMenu()
-        for m in [15, 30, 60, 120] {
-            let label = m < 60 ? "\(m) minutes" : "\(m / 60) hour\(m == 60 ? "" : "s")"
-            let it = NSMenuItem(title: label, action: #selector(timerSelected(_:)), keyEquivalent: "")
-            it.target = self
-            it.representedObject = m
-            timerMenu.addItem(it)
-        }
-        timerItem.submenu = timerMenu
-        menu.addItem(timerItem)
+        addMode("On", .on)
+        addMode("Off", .off)
         menu.addItem(.separator())
 
         // Setup submenu
@@ -132,13 +108,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             it.target = self
             setupMenu.addItem(it)
         }
-        if controller.hooksConnected {
-            setupMenu.addItem(disabledItem("✓  Claude Code connected"))
-        } else {
-            let it = NSMenuItem(title: "Connect Claude Code…", action: #selector(connectClaudeAction), keyEquivalent: "")
-            it.target = self
-            setupMenu.addItem(it)
-        }
         let notif = NSMenuItem(title: "Notifications", action: #selector(toggleNotificationsAction), keyEquivalent: "")
         notif.target = self
         notif.state = controller.notificationsEnabled ? .on : .off
@@ -147,13 +116,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(setupItem)
         menu.addItem(.separator())
 
-        addDisabled("Clawake v\(appVersion())")
+        menu.addItem(disabledItem("Clawake v\(appVersion())"))
         let quitIt = NSMenuItem(title: "Quit", action: #selector(quitAction), keyEquivalent: "q")
         quitIt.target = self
         menu.addItem(quitIt)
     }
 
-    private func addDisabled(_ title: String) { menu.addItem(disabledItem(title)) }
     private func disabledItem(_ title: String) -> NSMenuItem {
         let it = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         it.isEnabled = false
@@ -174,10 +142,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             controller.setMode(m)
         }
     }
-    @objc func timerSelected(_ sender: NSMenuItem) {
-        if let mins = sender.representedObject as? Int { controller.setMode(.timer, minutes: mins) }
-    }
-    @objc func connectClaudeAction() { _ = controller.connectClaude() }
     @objc func toggleNotificationsAction() { controller.toggleNotifications() }
     @objc func installHelperAction() { _ = controller.installLidHelper() }
     @objc func openSetup() { openOnboarding() }

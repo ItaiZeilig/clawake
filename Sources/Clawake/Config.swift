@@ -11,15 +11,13 @@ struct ThermalConfig: Codable {
 }
 
 struct Config: Codable {
-    var session_timeout_minutes: Int
     var mode: Mode
     var battery: BatteryConfig
     var thermal: ThermalConfig
     var notifications: Bool
 
     static let defaults = Config(
-        session_timeout_minutes: 15,
-        mode: .always,
+        mode: .on,
         battery: BatteryConfig(min_percent: 15, only_on_ac: false),
         thermal: ThermalConfig(protect: true, cutoff: "serious"),
         notifications: true

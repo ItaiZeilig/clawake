@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Modes and the pure decision function (ported from decide.ts)
 
 enum Mode: String, Codable, CaseIterable {
-    case sessions, always, timer, off
+    case on, off
 }
 
 struct Decision: Equatable {
@@ -13,10 +13,7 @@ struct Decision: Equatable {
 }
 
 struct DecideInput {
-    var now: Double            // epoch seconds
     var mode: Mode
-    var timerUntil: Double?    // epoch seconds
-    var activeSessions: Int
     var onBattery: Bool
     var batteryPercent: Int?
     var minPercent: Int
@@ -25,26 +22,9 @@ struct DecideInput {
 }
 
 func decide(_ i: DecideInput) -> Decision {
-    var want = false
-    var reason = "off"
-    switch i.mode {
-    case .off:
-        want = false; reason = "off"
-    case .always:
-        want = true; reason = "always"
-    case .sessions:
-        want = i.activeSessions > 0
-        reason = want ? "sessions-active" : "sessions-idle"
-    case .timer:
-        if let until = i.timerUntil, i.now < until {
-            want = true; reason = "timer"
-        } else {
-            want = false; reason = "timer-expired"
-        }
+    if i.mode == .off {
+        return Decision(awake: false, deep: false, reason: "off")
     }
-
-    if !want { return Decision(awake: false, deep: false, reason: reason) }
-
     // Battery floor.
     if i.onBattery, let p = i.batteryPercent, i.minPercent > 0, p <= i.minPercent {
         return Decision(awake: false, deep: false, reason: "battery-low")
@@ -56,8 +36,8 @@ func decide(_ i: DecideInput) -> Decision {
     if i.thermalPaused {
         return Decision(awake: false, deep: false, reason: "thermal")
     }
-    // Lid-closed is always on whenever we keep awake.
-    return Decision(awake: true, deep: true, reason: reason)
+    // On, and lid-closed is always part of keeping awake.
+    return Decision(awake: true, deep: true, reason: "on")
 }
 
 // MARK: - Thermal (ported from thermal.ts)
