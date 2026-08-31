@@ -29,6 +29,24 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Clawake "$APP/Contents/MacOS/Clawake"
 
+# Privileged helper daemon (SMAppService) + its embedded LaunchDaemon plist.
+cp .build/release/ClawakeHelper "$APP/Contents/MacOS/ClawakeHelper"
+mkdir -p "$APP/Contents/Library/LaunchDaemons"
+cat > "$APP/Contents/Library/LaunchDaemons/app.clawake.helper.plist" <<'PLIST2'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>app.clawake.helper</string>
+  <key>BundleProgram</key><string>Contents/MacOS/ClawakeHelper</string>
+  <key>MachServices</key>
+  <dict><key>app.clawake.helper</key><true/></dict>
+  <key>AssociatedBundleIdentifiers</key>
+  <array><string>app.clawake.desktop</string></array>
+</dict>
+</plist>
+PLIST2
+
 # Use the @2x (44px) art at menu-bar size for retina crispness.
 cp "$ASSETS/car-active@2x.png" "$APP/Contents/Resources/car-active.png"
 cp "$ASSETS/car-idle@2x.png"   "$APP/Contents/Resources/car-idle.png"
@@ -59,6 +77,10 @@ PLIST
 if [ -n "$DEVID_IDENTITY" ]; then
   echo "Codesigning with Developer ID (hardened runtime)..."
   echo "  identity: $DEVID_IDENTITY"
+  # Sign the nested helper first (inside-out), then the app seals it.
+  codesign --force --options runtime --timestamp \
+    --identifier app.clawake.helper \
+    --sign "$DEVID_IDENTITY" "$APP/Contents/MacOS/ClawakeHelper"
   codesign --force --options runtime --timestamp \
     --entitlements "$ENTITLEMENTS" \
     --sign "$DEVID_IDENTITY" "$APP"

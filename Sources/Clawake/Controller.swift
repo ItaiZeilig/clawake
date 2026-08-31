@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import ServiceManagement
 
 /// Orchestrator + observable app state for the SwiftUI panels. Runs on the main
 /// queue, so its state needs no locking.
@@ -62,18 +63,18 @@ final class Controller: ObservableObject {
         tick()
     }
 
-    /// Run the one-time admin approval off the main thread, then refresh on main.
+    /// Register the privileged daemon. macOS may require the user to enable it in
+    /// Login Items; if so, open that pane. Completes true once it is enabled.
     func approveLid(completion: @escaping (Bool) -> Void) {
-        DispatchQueue.global().async {
-            let ok = installHelper()
-            DispatchQueue.main.async {
-                self.tick()
-                completion(ok)
-            }
+        let status = power.helper.register()
+        if status == .requiresApproval {
+            power.helper.openLoginItemsSettings()
         }
+        tick()
+        completion(status == .enabled)
     }
 
-    func helperReady() -> Bool { helperInstalled() }
+    func helperReady() -> Bool { power.helperEnabled() }
 
     func setPauseOnLowBattery(_ on: Bool) {
         config.pauseOnLowBattery = on
@@ -125,7 +126,7 @@ final class Controller: ObservableObject {
         // The deep (lid-closed) layer only engages when the user asked for it AND
         // the one-time approval is in place — otherwise we'd trigger a password
         // prompt every cycle.
-        let lidApproved = helperInstalled()
+        let lidApproved = power.helperEnabled()
         let lidActive = config.lidClosed && lidApproved
         let minPercent = config.pauseOnLowBattery ? config.battery.min_percent : 0
 
@@ -155,17 +156,13 @@ final class Controller: ObservableObject {
     func shutdown() { power.releaseAll() }
 
     /// Fully remove Clawake's footprint: turn off keep-awake, restore normal sleep,
-    /// remove the lid-closed sudoers helper (one admin prompt, only if installed),
-    /// and delete the saved settings. Ordering matters: `releaseAll` resets the deep
-    /// layer while the NOPASSWD rule still exists, then we remove the rule.
+    /// unregister the privileged daemon, and delete the saved settings. Ordering
+    /// matters: `releaseAll` resets the deep layer through the daemon while it is
+    /// still registered, then we unregister it.
     func uninstall() {
-        power.releaseAll()
-        if helperInstalled() {
-            // One admin prompt: belt-and-suspenders reset of sleep, then drop the rule.
-            let script = "do shell script \"/usr/bin/pmset -a disablesleep 0; "
-                + "rm -f \(Paths.sudoersFile)\" with administrator privileges"
-            _ = runProcess("/usr/bin/osascript", ["-e", script])
-        }
+        power.adoptDeepState()      // learn the real SleepDisabled state (this is a fresh process)
+        power.releaseAll()          // reset SleepDisabled via the daemon WHILE it is still registered
+        power.helper.unregister()   // then remove the privileged daemon registration
         try? FileManager.default.removeItem(at: Paths.configDir)
     }
 

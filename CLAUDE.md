@@ -25,16 +25,21 @@ Clawake has two independent power layers. This split is the heart of the app.
    inside the App Sandbox. This alone keeps the Mac awake while the lid is open.
 
 2. **Deep layer (lid-closed keep-awake).** `pmset -a disablesleep 1` (sets
-   `SleepDisabled`). This is what survives a closed lid. It **needs root**, so we
-   run it via `sudo -n /usr/bin/pmset ...` against a one-time **sudoers** rule
-   (`/etc/sudoers.d/clawake`, a `NOPASSWD` line for `pmset -a disablesleep *`)
-   that the app installs on first approval through one `osascript` admin prompt.
-   If the sudoers rule is missing, the code falls back to a single osascript admin
-   prompt (with a 5-minute cooldown so a decline does not re-prompt every cycle).
+   `SleepDisabled`). This is what survives a closed lid. It **needs root**, so it
+   runs through a **privileged `SMAppService` daemon** (`ClawakeHelper`) embedded in
+   the app bundle and reached over **XPC**. The daemon validates the caller's code
+   signature (our Developer ID team + app bundle id) before doing anything, then
+   runs `pmset` as root. The user approves the daemon **once** in System Settings →
+   Login Items & Extensions (no password prompts during use, no `sudoers`). This
+   replaced the old `/etc/sudoers.d/clawake` approach entirely.
 
 The deep layer only engages when the user turned the "lid closed" setting **on**
-AND the sudoers helper is installed. Otherwise the app still runs the light layer,
-so it is useful out of the box and never prompts unless you ask for lid-closed.
+AND the daemon is registered and enabled. Otherwise the app still runs the light
+layer, so it is useful out of the box and never prompts unless you ask for
+lid-closed. `disablesleep` is a persistent system setting, so it survives the
+daemon/app exiting (that is the point); the app reconciles the real state on launch
+(`adoptDeepState`) to self-heal anything a crash left behind, and `uninstall`
+resets it through the daemon before unregistering.
 
 ## Architecture (file by file)
 
@@ -54,17 +59,27 @@ All source is in `Sources/Clawake/`.
 - `Config.swift` — `Config` (mode, lidClosed, pauseOnLowBattery, battery{min_percent,
   only_on_ac}, thermal{protect, cutoff}, notifications, didOnboard) with **tolerant
   decoding** (older config files missing new keys still load). `Paths`: config at
-  `~/.claude/plugins/clawake/config.json`, sudoers at `/etc/sudoers.d/clawake`.
+  `~/.claude/plugins/clawake/config.json`.
 - `Controller.swift` — `ObservableObject` orchestrator + all published UI state.
   `tick()` reads power and thermal, computes the `Decision`, applies it, and
   publishes state (awake, isOn, statusTitle/detail, powerText, thermalText/level,
   lidClosedOn, lidApprovalNeeded, and the settings mirrors). Setters save config and
-  re-tick. `approveLid` runs the admin install off the main thread, then ticks.
+  re-tick. `approveLid` registers the `SMAppService` daemon (and opens Login Items
+  if approval is needed), then ticks. `uninstall()` resets sleep, unregisters the
+  daemon, and deletes the config. `adoptDeepState` reconciles a crash-left state.
 - `Power.swift` — `PowerController.apply(_:)` (light via IOPMAssertion, deep via
-  `setDeep`, single-flight + cooldown). `setDeep` calls `sudo -n /usr/bin/pmset ...`
-  first (matches the sudoers rule, no password), falls back to osascript admin.
-  `helperInstalled()` / `installHelper()` (writes and validates the sudoers file
-  via `visudo -cf`).
+  `setDeep`, single-flight + cooldown). `setDeep` now calls the privileged daemon
+  over XPC (`helper.setSleepDisabled`); `helperEnabled()` reports the daemon status.
+  Owns the `HelperClient`.
+- `HelperClient.swift` (app side) — registers/unregisters the `SMAppService` daemon
+  (`SMAppService.daemon(plistName:)`) and sends it XPC messages (`setSleepDisabled`,
+  `ping`) with a short timeout.
+- `Sources/ClawakeShared/HelperProtocol.swift` — the `@objc ClawakeHelperProtocol`
+  XPC interface and shared `HelperConstants` (mach service name, team id, bundle
+  ids), compiled into both the app and the daemon.
+- `Sources/ClawakeHelper/main.swift` — the root daemon: an `NSXPCListener` on the
+  mach service that verifies each connection's code signature (our Developer ID team
+  + app bundle id via `SecCodeCheckValidity`) before running `pmset` as root.
 - `Sensors.swift` — `readThermal()` (`ProcessInfo.thermalState`), `readPower()`
   (`pmset -g batt`).
 - `Popover.swift` — the menu-bar panel. `PanelStyle`, custom-drawn `BrandSwitch`
@@ -149,11 +164,12 @@ keychain for unrelated company work; it is not used by Clawake.)
    ```
    The script does hardened-runtime sign → DMG → `notarytool submit --wait` →
    `stapler staple` (app + DMG) → Gatekeeper check, all in that run.
-2. **(Recommended) Upgrade the lid helper.** Replace the `sudoers` approach with a
-   proper **`SMAppService`** privileged launchd daemon (macOS 13+) that runs as root
-   and talks to the app over XPC. Cleaner than editing sudoers, survives OS updates,
-   and is the mechanism Apple documents for privileged operations. Notarization does
-   not require this (the current sudoers app notarizes fine), it is polish.
+2. **Lid helper via `SMAppService` (done).** The privileged layer is a signed
+   `SMAppService` daemon (`ClawakeHelper`) embedded in the bundle, reached over XPC
+   with code-signature validation. The old sudoers approach is gone. This is the
+   Apple-documented mechanism for privileged operations and gives a genuinely clean
+   uninstall (the helper lives in the bundle, so trashing the app removes its code;
+   `--uninstall` / the daemon `unregister()` clears the registration).
 3. **Distribute.** A one-page landing site (free on GitHub Pages) with a Download
    button pointing at a **GitHub Releases** DMG. Add **Sparkle** later for
    auto-updates; a Homebrew Cask is an easy bonus.

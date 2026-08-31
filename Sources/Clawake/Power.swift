@@ -1,12 +1,13 @@
 import Foundation
 import IOKit.pwr_mgt
 
-/// Two layers, mirroring the Electron version:
+/// Two layers:
 ///  - light: IOPMAssertion (prevent idle system sleep). No root.
-///  - deep:  `pmset -a disablesleep` (survive a closed lid). Needs root; uses the
-///           password-free sudoers helper, else one admin prompt. Single-flight
-///           + cooldown so a decline does not re-prompt every tick.
+///  - deep:  `pmset -a disablesleep` (survive a closed lid). Needs root; runs
+///           through the SMAppService privileged daemon over XPC. Single-flight
+///           + cooldown so a failure does not retry every tick.
 final class PowerController {
+    let helper = HelperClient()
     private var lightAssertion: IOPMAssertionID = 0
     private var lightActive = false
     private(set) var deepEngaged = false
@@ -74,32 +75,11 @@ final class PowerController {
         }
     }
 
+    /// Deep sleep-prevention runs through the privileged daemon over XPC.
     private func setDeep(_ on: Bool) -> Bool {
-        let arg = on ? "1" : "0"
-        // Password-free path: pmset directly (matches the sudoers NOPASSWD rule).
-        let viaSudo = runProcess("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-a", "disablesleep", arg])
-        if viaSudo.ok { return true }
-        // Fallback: one native admin prompt.
-        let script = "do shell script \"/usr/bin/pmset -a disablesleep \(arg)\" with administrator privileges"
-        return runProcess("/usr/bin/osascript", ["-e", script]).ok
+        helper.setSleepDisabled(on)
     }
-}
 
-// MARK: - The lid-closed permission helper (sudoers)
-
-func helperInstalled() -> Bool {
-    FileManager.default.fileExists(atPath: Paths.sudoersFile)
-}
-
-@discardableResult
-func installHelper() -> Bool {
-    let user = NSUserName()
-    let line = "\(user) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep *"
-    let cmd =
-        "printf '%s\\n' '\(line)' > \(Paths.sudoersFile) && chmod 440 \(Paths.sudoersFile) && "
-        + "visudo -cf \(Paths.sudoersFile) || (rm -f \(Paths.sudoersFile); false)"
-    let script =
-        "do shell script \"" + cmd.replacingOccurrences(of: "\"", with: "\\\"")
-        + "\" with administrator privileges"
-    return runProcess("/usr/bin/osascript", ["-e", script]).ok
+    /// Whether the privileged daemon is registered and approved.
+    func helperEnabled() -> Bool { helper.isEnabled }
 }

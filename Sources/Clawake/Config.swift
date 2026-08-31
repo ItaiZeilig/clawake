@@ -64,7 +64,6 @@ enum Paths {
     static var configFile: URL { configDir.appendingPathComponent("config.json") }
     static var socketPath: String { configDir.appendingPathComponent("control.sock").path }
     static var settingsFile: URL { home.appendingPathComponent(".claude/settings.json") }
-    static let sudoersFile = "/etc/sudoers.d/clawake"
 }
 
 func loadConfig() -> Config {
