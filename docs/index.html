@@ -1,6 +1,6 @@
 <title>Clawake: Keep Claude Code Running With the Lid Closed</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Clawake keeps your Mac awake with the lid closed, so a Claude Code run, a build, or a server keeps going after you shut the laptop. A tiny native menu bar app, no external monitor needed.">
+<meta name="description" content="Clawake keeps your Mac awake with the lid closed, so a Claude Code run, a build, or a server keeps going after you shut the laptop. A tiny native menu bar app, universal for Apple Silicon and Intel.">
 <meta property="og:title" content="Clawake: Keep Claude Code Running With the Lid Closed">
 <meta property="og:description" content="Start a long Claude Code run, close the laptop, and it keeps working. Clawake holds your Mac awake through a closed lid, so the session stays alive and reachable.">
 <meta property="og:type" content="website">
@@ -13,385 +13,374 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@400;500;600&display=swap">
 <style>
-  /* Clawake - cinematic warm-dark, single committed theme.
-     Every color is painted explicitly so the page holds on any host ground. */
+  /* Clawake - warm-dark cockpit, one rationed accent, hairline borders.
+     Single committed theme; every color painted explicitly. */
   :root {
-    --bg:        #17110C;
-    --bg-2:      #1E1710;
-    --surface:   #241B13;
-    --surface-2: #2B2118;
-    --ink:       #F3EBDE;
-    --muted:     #B8A995;
-    --faint:     #83745F;
+    --bg:        #16100B;
+    --bg-2:      #1C1610;
+    --surface:   #221A12;
+    --surface-2: #2A2018;
+    --ink:       #F4ECDF;
+    --muted:     #B6A692;
+    --faint:     #857562;
     --accent:    #F2883A;
-    --accent-hi: #FFA65E;
-    --line:      rgba(243, 235, 222, 0.13);
-    --line-soft: rgba(243, 235, 222, 0.07);
+    --accent-hi: #FFAB63;
+    --line:      rgba(244, 236, 223, 0.12);
+    --line-soft: rgba(244, 236, 223, 0.06);
+    --maxw: 1120px;
     --display: "Schibsted Grotesk", system-ui, -apple-system, sans-serif;
     --body: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
     --hero: url('hero.png');
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 80px; }
   body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--body);
-    font-size: 17px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-    overflow-x: hidden;
+    background: var(--bg); color: var(--ink); font-family: var(--body);
+    font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility; overflow-x: hidden;
   }
-
-  .wrap { width: 100%; max-width: 1180px; margin-inline: auto; padding-inline: clamp(20px, 5vw, 56px); }
   a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; }
+  .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: clamp(20px, 5vw, 48px); }
 
-  /* ---- brand mark ---- */
-  .brand { display: inline-flex; align-items: center; gap: 11px; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: -0.015em; color: var(--ink); }
-  .brand img { width: 32px; height: 32px; border-radius: 8px; flex: none; box-shadow: 0 4px 16px -4px rgba(0,0,0,0.6); }
-
-  /* ---- top bar ---- */
-  header {
-    position: absolute; inset: 0 0 auto 0; z-index: 5;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: clamp(18px, 3vw, 30px) clamp(20px, 5vw, 56px);
-  }
-  .nav-link {
-    font-weight: 600; font-size: 15px; color: #FFFFFF;
-    padding: 9px 18px; border: 1px solid rgba(255,255,255,0.35);
-    background: rgba(20, 14, 8, 0.35); border-radius: 999px;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    transition: border-color .2s, background .2s;
-  }
-  .nav-link:hover { border-color: var(--accent); background: rgba(242, 136, 58, 0.22); }
-
-  /* ---- hero ---- */
-  .hero {
-    position: relative; min-height: 92vh; display: flex; align-items: center;
-    background-image: var(--hero);
-    background-size: cover; background-position: 62% center;
-    isolation: isolate;
-  }
-  .hero::before {
-    content: ""; position: absolute; inset: 0; z-index: 1;
-    background:
-      linear-gradient(90deg, rgba(11, 7, 4, 0.92) 0%, rgba(11, 7, 4, 0.64) 34%, rgba(11, 7, 4, 0.12) 62%, rgba(11, 7, 4, 0) 82%),
-      linear-gradient(0deg, rgba(11, 7, 4, 0.55) 0%, rgba(11, 7, 4, 0) 42%);
-  }
-  .hero .wrap { position: relative; z-index: 2; width: 100%; }
-  .hero-copy { max-width: 600px; padding-block: 11vh; }
-
+  /* eyebrow / section heads (shared) */
   .eyebrow {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-family: var(--body); font-weight: 600; font-size: 12.5px;
-    letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-hi);
-    margin-bottom: 24px;
+    display: inline-flex; align-items: center; gap: 9px; font-weight: 600;
+    font-size: 12.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent-hi);
   }
-  .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--accent); }
-
-  h1 {
-    font-family: var(--display); font-weight: 700;
-    font-size: clamp(2.4rem, 4.8vw, 3.7rem); line-height: 1.02;
-    letter-spacing: -0.03em; text-wrap: balance; color: #FCF6ED;
+  .eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--accent); }
+  .sec-head {
+    font-family: var(--display); font-weight: 600; font-size: clamp(1.8rem, 3.6vw, 2.6rem);
+    letter-spacing: -0.025em; line-height: 1.06; text-wrap: balance; color: #FCF6ED;
   }
-  h1 .soft { color: var(--muted); }
+  .sec-sub { color: var(--muted); font-size: 1.06rem; line-height: 1.55; max-width: 54ch; }
+  .hl { color: var(--accent); }
 
-  .lede {
-    margin-top: 24px; font-size: clamp(1.05rem, 1.5vw, 1.22rem);
-    line-height: 1.55; color: #E9DFD0; max-width: 42ch;
-  }
-
-  .cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 26px; margin-top: 38px; }
+  /* buttons */
   .btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-family: var(--body); font-weight: 600; font-size: 16px;
-    padding: 14px 27px; border-radius: 999px; cursor: pointer;
-    transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: var(--body); font-weight: 600; font-size: 16px; white-space: nowrap;
+    padding: 13px 24px; border-radius: 12px; cursor: pointer;
+    transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
   }
-  .btn-primary {
-    background: var(--accent); color: #201207;
-    box-shadow: 0 10px 34px -10px rgba(242, 136, 58, 0.7);
-  }
-  .btn-primary:hover { background: var(--accent-hi); transform: translateY(-2px); box-shadow: 0 16px 42px -12px rgba(242, 136, 58, 0.82); }
-  .btn-primary svg { width: 17px; height: 17px; }
-  .btn-ghost { color: var(--ink); font-weight: 600; }
-  .btn-ghost .arr { display: inline-block; transition: transform .2s ease; color: var(--accent-hi); }
+  .btn svg { width: 17px; height: 17px; flex: none; }
+  .btn-primary { background: var(--accent); color: #1c0f05; box-shadow: 0 8px 30px -10px rgba(242,136,58,0.65); }
+  .btn-primary:hover { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 14px 38px -12px rgba(242,136,58,0.78); }
+  .btn-line { border: 1px solid var(--line); color: var(--ink); background: transparent; }
+  .btn-line:hover { border-color: var(--accent); background: rgba(242,136,58,0.08); }
+  .btn-ghost { color: var(--ink); }
+  .btn-ghost .arr { color: var(--accent-hi); display: inline-block; transition: transform .2s ease; }
   .btn-ghost:hover .arr { transform: translateX(4px); }
 
-  .meta { margin-top: 26px; font-size: 13.5px; color: var(--muted); letter-spacing: 0.01em; }
+  /* ---------- sticky nav ---------- */
+  header {
+    position: sticky; top: 0; z-index: 50; border-bottom: 1px solid transparent;
+    transition: background .25s ease, border-color .25s ease, backdrop-filter .25s ease;
+  }
+  header.scrolled { background: rgba(16,11,7,0.72); border-bottom-color: var(--line-soft); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.015em; }
+  .brand img { width: 30px; height: 30px; border-radius: 8px; }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a.link { color: var(--muted); font-size: 15px; font-weight: 500; transition: color .2s ease; }
+  .nav-links a.link:hover { color: var(--ink); }
+  .nav-cta { padding: 8px 16px; font-size: 14px; border-radius: 10px; }
+  @media (max-width: 620px) { .nav-links a.link { display: none; } }
 
-  /* ---- reveal ---- */
-  .rise { opacity: 0; transform: translateY(18px); animation: rise .9s cubic-bezier(.2,.7,.2,1) forwards; }
-  .rise.d1 { animation-delay: .05s; }
-  .rise.d2 { animation-delay: .16s; }
-  .rise.d3 { animation-delay: .27s; }
-  .rise.d4 { animation-delay: .38s; }
-  @keyframes rise { to { opacity: 1; transform: none; } }
+  /* ---------- hero ---------- */
+  .hero { position: relative; min-height: min(760px, 90vh); display: flex; align-items: center; isolation: isolate; margin-top: -66px; padding-top: 66px; }
+  .hero-bg { position: absolute; inset: 0; z-index: -2; background-image: var(--hero); background-size: cover; background-position: 64% center; }
+  .hero-bg::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(13,9,5,0.94) 0%, rgba(13,9,5,0.7) 32%, rgba(13,9,5,0.15) 62%, rgba(13,9,5,0) 84%),
+      linear-gradient(0deg, var(--bg) 1%, rgba(13,9,5,0.15) 34%, rgba(13,9,5,0) 60%);
+  }
+  .hero-copy { max-width: 620px; padding-block: clamp(56px, 10vh, 108px); }
+  .hero h1 {
+    font-family: var(--display); font-weight: 700; font-size: clamp(2.5rem, 5.4vw, 4rem);
+    line-height: 1.02; letter-spacing: -0.035em; text-wrap: balance; color: #FDF7EE; margin-top: 22px;
+  }
+  .hero h1 .soft { color: var(--muted); }
+  .hero .lede { margin-top: 22px; font-size: clamp(1.08rem, 1.5vw, 1.24rem); line-height: 1.55; color: #E9DFD0; max-width: 46ch; }
+  .hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 34px; }
+  .hero-meta { margin-top: 20px; font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hero-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); }
 
-  /* ---- why section ---- */
-  .why { background: var(--bg-2); border-top: 1px solid var(--line-soft); padding-block: clamp(66px, 10vw, 122px); }
-  .sec-eyebrow {
-    font-weight: 600; font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--accent-hi); margin-bottom: 16px;
-  }
-  .sec-head {
-    font-family: var(--display); font-weight: 600; font-size: clamp(1.75rem, 3.4vw, 2.5rem);
-    letter-spacing: -0.025em; line-height: 1.08; text-wrap: balance; max-width: 20ch;
-    margin-bottom: 58px; color: #FCF6ED;
-  }
-  .sec-head .hl { color: var(--accent); }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(18px, 2.4vw, 32px); }
-  .card {
-    background: var(--surface); border: 1px solid var(--line-soft);
-    border-radius: 18px; padding: 34px 30px;
-    transition: border-color .25s ease, transform .25s ease, background .25s ease;
-  }
-  .card:hover { border-color: var(--line); transform: translateY(-3px); background: var(--surface-2); }
-  .card .ic {
-    width: 46px; height: 46px; display: grid; place-items: center;
-    border-radius: 13px; background: rgba(242, 136, 58, 0.13);
-    color: var(--accent); margin-bottom: 24px;
-  }
-  .card .ic svg { width: 24px; height: 24px; }
-  .card h3 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; letter-spacing: -0.015em; margin-bottom: 11px; color: var(--ink); }
-  .card p { color: var(--muted); font-size: 15.5px; line-height: 1.62; }
-
-  /* ---- download band ---- */
-  .band { position: relative; padding-block: clamp(78px, 11vw, 136px); text-align: center; overflow: hidden; }
-  .band::after {
-    content: ""; position: absolute; left: 50%; top: 42%; z-index: 0;
-    width: 640px; height: 640px; transform: translate(-50%, -50%);
-    background: radial-gradient(circle, rgba(242, 136, 58, 0.17), rgba(242, 136, 58, 0) 62%);
-    pointer-events: none;
-  }
-  .band > * { position: relative; z-index: 1; }
-  .band-icon { width: 82px; height: 82px; border-radius: 19px; margin: 0 auto 30px; box-shadow: 0 18px 46px -14px rgba(0,0,0,0.75); }
-  .band h2 {
-    font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 6vw, 3.9rem);
-    letter-spacing: -0.035em; line-height: 1; margin-bottom: 20px; color: #FCF6ED;
-  }
-  .band p { color: var(--muted); max-width: 48ch; margin: 0 auto 34px; font-size: 1.05rem; }
-  .band .meta { margin-top: 22px; }
-  .downloads { display: flex; flex-wrap: wrap; gap: 14px 20px; justify-content: center; align-items: center; }
-  .band .editions-note { color: var(--faint); font-size: 13.5px; max-width: 52ch; margin: 16px auto 0; }
-
-  /* ---- footer ---- */
-  footer {
-    border-top: 1px solid var(--line-soft); padding-block: 34px;
-    display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
-    color: var(--faint); font-size: 14px;
-  }
-  footer .brand { font-size: 16px; color: var(--muted); }
-  footer .brand img { width: 26px; height: 26px; }
-  footer a { color: var(--muted); }
-  footer a:hover { color: var(--ink); }
-
-  /* ---- trust strip ---- */
-  .trust { background: var(--bg-2); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
-  .trust .wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 30px; padding-block: 22px; }
+  /* ---------- trust strip ---------- */
+  .trust { border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); background: var(--bg-2); }
+  .trust .wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 28px; padding-block: 20px; }
   .trust span { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--muted); }
   .trust svg { width: 16px; height: 16px; color: var(--accent); flex: none; }
 
-  /* ---- product panel ---- */
-  .product { position: relative; padding-block: clamp(66px, 10vw, 122px); text-align: center; overflow: hidden; }
-  .product::after {
-    content: ""; position: absolute; left: 50%; top: 56%; z-index: 0;
-    width: 680px; height: 680px; transform: translate(-50%, -50%);
-    background: radial-gradient(circle, rgba(242, 136, 58, 0.13), rgba(242, 136, 58, 0) 60%); pointer-events: none;
+  /* ---------- section shell ---------- */
+  section.block { padding-block: clamp(64px, 9vw, 118px); }
+  .block-head { max-width: 640px; }
+  .block-head .sec-head { margin: 14px 0 14px; }
+
+  /* ---------- product shot ---------- */
+  .product { text-align: center; position: relative; overflow: hidden; }
+  .product::after { content: ""; position: absolute; left: 50%; top: 58%; z-index: 0; width: 720px; height: 720px; max-width: 120%; transform: translate(-50%,-50%); background: radial-gradient(circle, rgba(242,136,58,0.14), rgba(242,136,58,0) 60%); pointer-events: none; }
+  .product > .wrap { position: relative; z-index: 1; }
+  .product .block-head { margin-inline: auto; }
+  .product .sec-head, .product .eyebrow, .product .sec-sub { margin-inline: auto; }
+  .product .sec-sub { text-align: center; }
+  .shot { display: inline-block; margin-top: 44px; border: 1px solid var(--line); border-radius: 20px; overflow: hidden; line-height: 0; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.9); background: var(--surface); }
+  .shot img { display: block; width: 380px; max-width: 84vw; }
+
+  /* ---------- features ---------- */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; padding: 28px; transition: border-color .25s ease, transform .25s ease, background .25s ease; }
+  .card:hover { border-color: var(--line); transform: translateY(-2px); background: var(--surface-2); }
+  .card .ic { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 11px; background: rgba(242,136,58,0.12); color: var(--accent); margin-bottom: 18px; }
+  .card .ic svg { width: 22px; height: 22px; }
+  .card h3 { font-family: var(--display); font-weight: 600; font-size: 1.18rem; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+  /* ---------- how it works ---------- */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; counter-reset: step; }
+  .step { border: 1px solid var(--line-soft); border-radius: 16px; padding: 28px; background: var(--bg-2); position: relative; }
+  .step .num { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--accent); border: 1px solid var(--line); width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; margin-bottom: 16px; }
+  .step h3 { font-family: var(--display); font-weight: 600; font-size: 1.1rem; color: var(--ink); margin-bottom: 7px; }
+  .step p { color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+
+  /* ---------- faq ---------- */
+  .faq { background: var(--bg-2); border-top: 1px solid var(--line-soft); }
+  .faq-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: clamp(24px, 5vw, 72px); align-items: start; }
+  .faq-list { border-top: 1px solid var(--line-soft); }
+  .qa { border-bottom: 1px solid var(--line-soft); padding: 22px 0; }
+  .qa h3 { font-family: var(--display); font-weight: 600; font-size: 1.12rem; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 8px; }
+  .qa p { color: var(--muted); font-size: 15px; line-height: 1.62; }
+  @media (max-width: 820px) { .faq-grid { grid-template-columns: 1fr; gap: 20px; } }
+
+  /* ---------- download ---------- */
+  .download { text-align: center; position: relative; overflow: hidden; }
+  .download::after { content: ""; position: absolute; left: 50%; top: 44%; z-index: 0; width: 640px; height: 640px; max-width: 120%; transform: translate(-50%,-50%); background: radial-gradient(circle, rgba(242,136,58,0.16), rgba(242,136,58,0) 62%); pointer-events: none; }
+  .download > .wrap { position: relative; z-index: 1; }
+  .download .app-icon { width: 84px; height: 84px; border-radius: 20px; margin: 0 auto 28px; box-shadow: 0 18px 46px -14px rgba(0,0,0,0.8); }
+  .download h2 { font-family: var(--display); font-weight: 700; font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: -0.03em; line-height: 1; color: #FCF6ED; margin-bottom: 18px; }
+  .download p.lead { color: var(--muted); max-width: 46ch; margin: 0 auto 30px; font-size: 1.05rem; }
+  .download .meta { margin-top: 20px; font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- enterprise (bottom) ---------- */
+  .enterprise { border-top: 1px solid var(--line-soft); background: var(--bg-2); }
+  .ent-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 28px;
+    border: 1px solid var(--line); border-radius: 18px; padding: 28px 32px; background: var(--surface);
   }
-  .product > * { position: relative; z-index: 1; }
-  .product .sec-eyebrow, .product .sec-head { text-align: center; }
-  .product .sec-head { margin-inline: auto; margin-bottom: 16px; }
-  .product .sub { color: var(--muted); max-width: 44ch; margin: 0 auto 56px; font-size: 1.05rem; }
+  .ent-card .txt { max-width: 62ch; }
+  .ent-card .tag { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-hi); margin-bottom: 10px; }
+  .ent-card h3 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.01em; }
+  .ent-card p { color: var(--muted); font-size: 15px; line-height: 1.6; }
+  @media (max-width: 720px) { .ent-card { flex-direction: column; align-items: flex-start; gap: 20px; } }
 
-  .shot { display: inline-block; line-height: 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 34px 82px -22px rgba(0,0,0,0.85); }
-  .shot img { display: block; width: 366px; max-width: 86vw; height: auto; }
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--line-soft); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between; padding-block: 30px; color: var(--faint); font-size: 14px; }
+  footer .brand { font-size: 16px; color: var(--muted); }
+  footer .brand img { width: 24px; height: 24px; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--ink); }
+  .foot-links { display: flex; gap: 20px; }
 
-  /* ---- faq ---- */
-  .faq { background: var(--bg-2); border-top: 1px solid var(--line-soft); padding-block: clamp(62px, 9vw, 112px); }
-  .faq-list { max-width: 780px; }
-  .qa { border-top: 1px solid var(--line-soft); padding: 24px 0; }
-  .qa:first-child { border-top: none; }
-  .qa h3 { font-family: var(--display); font-weight: 600; font-size: 1.16rem; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 9px; }
-  .qa p { color: var(--muted); font-size: 15.5px; line-height: 1.62; max-width: 70ch; }
-
-  img { max-width: 100%; }
-
-  /* Tablet / small laptop */
-  @media (max-width: 860px) {
-    .grid { grid-template-columns: 1fr; }
-    .hero { background-position: 66% center; }
-    .hero::before { background:
-      linear-gradient(0deg, rgba(11,7,4,0.9) 6%, rgba(11,7,4,0.34) 52%, rgba(11,7,4,0.1) 100%),
-      linear-gradient(90deg, rgba(11,7,4,0.55), rgba(11,7,4,0.05)); }
-    .hero-copy { max-width: 100%; }
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) { .grid, .steps { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) {
+    .grid, .steps { grid-template-columns: 1fr; }
+    .hero-bg { background-position: 60% center; }
+    .hero-bg::after { background:
+      linear-gradient(0deg, var(--bg) 2%, rgba(13,9,5,0.4) 44%, rgba(13,9,5,0.08) 100%),
+      linear-gradient(90deg, rgba(13,9,5,0.6), rgba(13,9,5,0.05)); }
+    .hero-cta { flex-direction: column; align-items: stretch; }
+    .hero-cta .btn { width: 100%; }
+    .shot img { width: 320px; }
   }
-
-  /* Phones */
-  @media (max-width: 560px) {
-    .hero { min-height: 84vh; background-position: 58% center; }
-    .hero-copy { padding-block: 12vh 8vh; }
-    h1 { font-size: clamp(2rem, 8.5vw, 2.7rem); }
-    .lede { margin-top: 20px; font-size: 1.06rem; max-width: 100%; }
-    .cta-row { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 30px; }
-    .btn { width: 100%; justify-content: center; }
-    .nav-link { padding: 8px 15px; font-size: 14px; }
-    .brand { font-size: 18px; }
-    .sec-head { font-size: clamp(1.5rem, 6.5vw, 2rem); }
-    .band h2 { font-size: clamp(2rem, 9vw, 2.7rem); }
-    .band-icon { width: 68px; height: 68px; }
-    .card { padding: 26px 22px; }
-    .qa h3 { font-size: 1.08rem; }
-    .trust .wrap { gap: 10px 22px; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    .rise { animation: none; opacity: 1; transform: none; }
-    .btn, .card, .btn-ghost .arr { transition: none; }
-  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn, .card, .step, .btn-ghost .arr { transition: none; } }
 </style>
 
-<header>
-  <a class="brand" href="#top" aria-label="Clawake home">
-    <img src="app-icon.png" alt="Clawake app icon" width="32" height="32">
-    Clawake
-  </a>
-  <a class="nav-link" href="#download">Download</a>
+<header id="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="Clawake home">
+      <img src="app-icon.png" alt="" width="30" height="30">Clawake
+    </a>
+    <nav class="nav-links">
+      <a class="link" href="#features">Features</a>
+      <a class="link" href="#how">How it works</a>
+      <a class="link" href="#faq">FAQ</a>
+      <a class="btn btn-primary nav-cta" href="https://github.com/ItaiZeilig/clawake/releases/download/v1.0.0/Clawake-1.0.0.dmg">Download</a>
+    </nav>
+  </div>
 </header>
 
-<section class="hero" id="top">
-  <div class="wrap">
-    <div class="hero-copy">
-      <span class="eyebrow rise d1">Menu bar app for macOS</span>
-      <h1 class="rise d2">Keep Claude Code running<br><span class="soft">with the lid closed.</span></h1>
-      <p class="lede rise d3">Start a long Claude Code run, close the laptop, and it keeps working. Your session stays alive in your bag or at home while the agent finishes, and you can jump back in remotely from anywhere. No external monitor, no Terminal commands.</p>
-      <div class="cta-row rise d4">
-        <a class="btn btn-primary" href="https://github.com/ItaiZeilig/clawake/releases/download/v1.0.0/Clawake-1.0.0.dmg">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.51 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
-          Download for Mac
-        </a>
-        <a class="btn btn-ghost" href="#why">See how it works <span class="arr">&rarr;</span></a>
+<main id="top">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">Menu bar app for macOS</span>
+        <h1>Keep Claude Code running<br><span class="soft">with the lid closed.</span></h1>
+        <p class="lede">Start a long run, shut the laptop, and it keeps working. Clawake holds your Mac awake, so builds finish, servers stay up, and you reconnect from anywhere, no dropped sessions.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="https://github.com/ItaiZeilig/clawake/releases/download/v1.0.0/Clawake-1.0.0.dmg" aria-label="Download Clawake for Mac">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.51 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+            Download for Mac
+          </a>
+          <a class="btn btn-line" href="#how">See how it works</a>
+        </div>
+        <p class="hero-meta">Free<span class="dot"></span>macOS 13 and up<span class="dot"></span>Universal (Apple Silicon &amp; Intel)</p>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="trust">
-  <div class="wrap">
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Notarized by Apple</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></svg>No account, no tracking</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>Free to use</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg>Under a megabyte</span>
-    <span><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.51 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>macOS 13 and up</span>
-  </div>
-</section>
+  <!-- TRUST -->
+  <section class="trust" aria-label="At a glance">
+    <div class="wrap">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Notarized by Apple</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></svg>No account, no tracking</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>Free to use</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg>Under a megabyte</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Universal, Apple Silicon &amp; Intel</span>
+    </div>
+  </section>
 
-<section class="product">
-  <p class="sec-eyebrow">The whole app</p>
-  <h2 class="sec-head">One small panel. That is all of it.</h2>
-  <p class="sub">Click the car in your menu bar and this is what opens. A single switch, your live status, and nothing to set up.</p>
-  <div class="shot">
-    <img src="panel.png" alt="The Clawake panel, switched on and keeping the Mac awake, showing power at 84 percent on battery, normal temperature, and lid closed set to on">
-  </div>
-</section>
-
-<section class="why" id="why">
-  <div class="wrap">
-    <h2 class="sec-head">No <span class="hl">sleep</span>. No <span class="hl">bloat</span>. No <span class="hl">setup</span>.</h2>
-    <div class="grid">
-      <div class="card">
-        <div class="ic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-        </div>
-        <h3>Your session keeps running</h3>
-        <p>Close the lid and nothing stops. A Claude Code run, a build, a download, or a server stays alive while the Mac is shut, at home on your desk or riding in your bag.</p>
+  <!-- PRODUCT SHOT -->
+  <section class="block product" id="product">
+    <div class="wrap">
+      <div class="block-head">
+        <span class="eyebrow">The whole app</span>
+        <h2 class="sec-head">One switch in your menu bar.</h2>
+        <p class="sec-sub">Click the car, flip it on. Your live status and optional guards are right there, and there is nothing to configure.</p>
       </div>
-      <div class="card">
-        <div class="ic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.7 19.5 20 12.4A5 5 0 0 0 12 5.5l-8 8"/><path d="M16 8 2 22"/><path d="M17.6 15H9"/></svg>
-        </div>
-        <h3>Small and native</h3>
-        <p>Written in Swift and measured in kilobytes. It sits in the menu bar as a small car icon, with no Dock icon and nothing running in the background.</p>
+      <div class="shot"><img src="panel.png" alt="The Clawake menu bar panel: switched on and keeping the Mac awake, showing power, temperature, and lid-closed status" width="380"></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="block" id="features">
+    <div class="wrap">
+      <div class="block-head">
+        <span class="eyebrow">Why Clawake</span>
+        <h2 class="sec-head">Built to stay out of your way.</h2>
+        <p class="sec-sub">Everything you need to keep a Mac working, and nothing you have to babysit.</p>
       </div>
-      <div class="card">
-        <div class="ic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="7" width="18.8" height="10" rx="5"/><circle cx="16" cy="12" r="2.7" fill="currentColor" stroke="none"/></svg>
+      <div class="grid">
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7.4" width="16" height="4.6" rx="2.3"/><path d="M4.5 15.6h15"/></svg></div>
+          <h3>Works with the lid closed</h3>
+          <p>Shut the lid and drop it in your bag. Clawake keeps the Mac awake through a closed lid, with no external monitor required.</p>
         </div>
-        <h3>One switch, nothing else</h3>
-        <p>Turn it on, turn it off. Optional guards pause it on low battery or high heat, so you stay in control without having to think about it.</p>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+          <h3>Your session survives</h3>
+          <p>A Claude Code run, a build, an SSH session, a local server: they keep running instead of freezing the moment the Mac would sleep.</p>
+        </div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0"/></svg></div>
+          <h3>Don't lock the screen</h3>
+          <p>Optionally keep the display on and unlocked so nothing interrupts a long task. Turn it off and the screen locks as normal.</p>
+        </div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></div>
+          <h3>Small and native</h3>
+          <p>Written in Swift and under a megabyte. It lives in the menu bar with no Dock icon and nothing running in the background.</p>
+        </div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/><path d="M20 4v4h-4"/></svg></div>
+          <h3>Guards built in</h3>
+          <p>Pause on low battery or high heat, and keep awake only on AC power. It stays out of trouble on its own, no watching required.</p>
+        </div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="16" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg></div>
+          <h3>One switch, no setup</h3>
+          <p>On or off. No account, no menus to learn, no configuration. Notarized by Apple, and gone in one drag to the Trash when you're done.</p>
+        </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="faq" id="faq">
-  <div class="wrap">
-    <h2 class="sec-head">Common questions</h2>
-    <div class="faq-list">
-      <div class="qa">
-        <h3>Does it keep a Claude Code session running with the lid closed?</h3>
-        <p>Yes. Clawake keeps the Mac awake, so a long Claude Code run, an agent task, a build, or any terminal process keeps going after you close the lid. Pair it with remote access and you can check on the session from your phone or another computer.</p>
+  <!-- HOW IT WORKS -->
+  <section class="block" id="how" style="border-top:1px solid var(--line-soft);">
+    <div class="wrap">
+      <div class="block-head">
+        <span class="eyebrow">Setup in a minute</span>
+        <h2 class="sec-head">Three steps, then forget it.</h2>
       </div>
-      <div class="qa">
-        <h3>How do I keep my Mac awake with the lid closed?</h3>
-        <p>Install Clawake, click the car icon in your menu bar, and switch it on. Your Mac stays awake with the lid shut, with no external monitor and no Terminal commands. Switch it off the same way when you want normal sleep back.</p>
-      </div>
-      <div class="qa">
-        <h3>Does it work without an external monitor or power adapter?</h3>
-        <p>Yes. Clawake keeps your Mac awake with the lid closed, on battery or on power, with no external display attached. It is a universal app that runs natively on both Apple Silicon and Intel, all from a small menu bar app.</p>
-      </div>
-      <div class="qa">
-        <h3>Can I reach my Mac remotely while the lid is closed?</h3>
-        <p>Yes. Because the Mac stays awake instead of sleeping, remote access, SSH, and background servers keep working while it sits closed at home or travels in your bag. Clawake keeps it reachable, your remote tool does the connecting.</p>
-      </div>
-      <div class="qa">
-        <h3>Does it work with a corporate screen-lock policy?</h3>
-        <p>Yes. Use the Enterprise build, or turn off "Don't lock the screen" in the Standard build. Then Clawake only keeps the system awake, so the screen still locks on your company's schedule and asks for a password while your session keeps running behind the lock. Clawake never changes your lock policy; that stays with your IT settings.</p>
-      </div>
-      <div class="qa">
-        <h3>What is the difference between the Standard and Enterprise builds?</h3>
-        <p>Standard keeps your Mac awake and, by default, keeps the screen unlocked so it never locks while Clawake is on (you can switch that off). The Enterprise build hides that control and never prevents locking, so the screen still locks on your company's schedule. Both keep the Mac awake, including with the lid closed.</p>
-      </div>
-      <div class="qa">
-        <h3>Will my Mac overheat with the lid closed?</h3>
-        <p>Clawake watches the temperature and pauses automatically if the Mac runs hot, then resumes once it cools. You can set the cutoff or turn the guard off in Settings. It can also pause on low battery.</p>
-      </div>
-      <div class="qa">
-        <h3>How is Clawake different from other keep-awake apps?</h3>
-        <p>Many keep-awake tools only stop idle sleep, so the Mac still sleeps the moment you close the lid. Clawake holds it awake through a closed lid. It is a tiny native app, under a megabyte, notarized by Apple, with no account and no Dock icon.</p>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><h3>Install</h3><p>Download the DMG and drag Clawake to your Applications folder. It is notarized, so it opens with no warning.</p></div>
+        <div class="step"><div class="num">2</div><h3>Turn it on</h3><p>Click the car in your menu bar and flip the switch. To keep it awake with the lid shut, approve it once in Login Items.</p></div>
+        <div class="step"><div class="num">3</div><h3>Close the lid</h3><p>Pack it away or leave it on your desk. Your run keeps going, and you can pick it back up from anywhere.</p></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="band" id="download">
-  <div class="wrap">
-    <img class="band-icon" src="app-icon.png" alt="Clawake app icon">
-    <h2>Keep it awake.</h2>
-    <p>Download Clawake, drag it to Applications, and click the car in your menu bar. That is the entire setup.</p>
-    <div class="downloads">
+  <!-- FAQ -->
+  <section class="block faq" id="faq">
+    <div class="wrap faq-grid">
+      <div class="block-head">
+        <span class="eyebrow">FAQ</span>
+        <h2 class="sec-head">Common questions.</h2>
+        <p class="sec-sub">Everything about how Clawake keeps your Mac awake and what it does not touch.</p>
+      </div>
+      <div class="faq-list">
+        <div class="qa"><h3>Does it keep a Claude Code session running with the lid closed?</h3><p>Yes. Clawake keeps the Mac awake, so a long Claude Code run, an agent task, a build, or any terminal process keeps going after you close the lid. Pair it with remote access to check in from your phone or another computer.</p></div>
+        <div class="qa"><h3>Does it work without an external monitor or power adapter?</h3><p>Yes. Clawake keeps your Mac awake with the lid closed, on battery or on power, with no external display attached. It is a universal app that runs natively on Apple Silicon and Intel.</p></div>
+        <div class="qa"><h3>Can I reach my Mac remotely while the lid is closed?</h3><p>Yes. Because the Mac stays awake instead of sleeping, remote access, SSH, and background servers keep working while it sits closed at home or travels in your bag.</p></div>
+        <div class="qa"><h3>Does it work with a corporate screen-lock policy?</h3><p>Yes. Use the Enterprise build, or turn off "Don't lock the screen" in the standard build. Then Clawake only keeps the system awake, so the screen still locks on your company's schedule while your session keeps running behind the lock.</p></div>
+        <div class="qa"><h3>Will my Mac overheat with the lid closed?</h3><p>Clawake watches the temperature and pauses automatically if the Mac runs hot, then resumes once it cools. You can set the cutoff or turn the guard off, and it can also pause on low battery.</p></div>
+        <div class="qa"><h3>How do I uninstall it?</h3><p>Drag Clawake to the Trash. If you enabled lid-closed keep-awake, it restores normal sleep and removes its helper as part of that, leaving nothing behind.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOAD -->
+  <section class="block download" id="download">
+    <div class="wrap">
+      <img class="app-icon" src="app-icon.png" alt="Clawake app icon">
+      <h2>Keep it awake.</h2>
+      <p class="lead">One download, one switch. Free, and off your Mac in a single drag whenever you want.</p>
       <a class="btn btn-primary" href="https://github.com/ItaiZeilig/clawake/releases/download/v1.0.0/Clawake-1.0.0.dmg" aria-label="Download Clawake for Mac">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.51 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
         Download for Mac
       </a>
-      <a class="btn btn-ghost" href="https://github.com/ItaiZeilig/clawake/releases/download/v1.0.0/Clawake-Enterprise-1.0.0.dmg">Enterprise build <span class="arr">&rarr;</span></a>
+      <p class="meta">Free · macOS 13 and up · Universal (Apple Silicon &amp; Intel)</p>
     </div>
-    <p class="meta">Free. macOS 13 and up. Universal (Apple Silicon and Intel).</p>
-    <p class="editions-note">Standard keeps your Mac awake and unlocked (you can turn locking back on). The Enterprise build keeps it awake but still locks on your company's schedule.</p>
-  </div>
-</section>
+  </section>
 
-<footer class="wrap">
-  <span class="brand">
-    <img src="app-icon.png" alt="Clawake app icon" width="26" height="26">
-    Clawake
-  </span>
-  <span>A small thing that keeps your Mac going. <a href="mailto:itaizeilig1@gmail.com">itaizeilig1@gmail.com</a></span>
+  <!-- ENTERPRISE (bottom) -->
+  <section class="enterprise" id="enterprise">
+    <div class="wrap" style="padding-block: clamp(40px, 6vw, 72px);">
+      <div class="ent-card">
+        <div class="txt">
+          <span class="tag">For managed Macs</span>
+          <h3>Deploying across a team?</h3>
+          <p>The Enterprise build keeps Macs awake but never prevents the screen from locking, and it hides that control, so it stays compliant with your corporate screen-lock policy out of the box.</p>
+        </div>
+        <a class="btn btn-line" href="https://github.com/ItaiZeilig/clawake/releases/download/v1.0.0/Clawake-Enterprise-1.0.0.dmg">Enterprise build <span style="color:var(--accent-hi)">&rarr;</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="brand"><img src="app-icon.png" alt="" width="24" height="24">Clawake</span>
+    <span class="foot-links">
+      <a href="#features">Features</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/ItaiZeilig/clawake">GitHub</a>
+      <a href="mailto:itaizeilig1@gmail.com">Contact</a>
+    </span>
+  </div>
 </footer>
+
+<script>
+  (function () {
+    var h = document.getElementById('site-header');
+    var onScroll = function () { h.classList.toggle('scrolled', window.scrollY > 8); };
+    onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
+  })();
+</script>
 
 <script type="application/ld+json">
 {
@@ -402,52 +391,18 @@
       "name": "Clawake",
       "operatingSystem": "macOS 13.0 or later",
       "applicationCategory": "DeveloperApplication",
-      "description": "Clawake keeps your Mac awake with the lid closed, so a Claude Code run, an agent task, a build, or a server keeps going after you shut the laptop. A tiny native menu bar app, notarized by Apple, that also pauses on high heat or low battery.",
+      "description": "Clawake keeps your Mac awake with the lid closed, so a Claude Code run, an agent task, a build, or a server keeps going after you shut the laptop. A tiny native menu bar app, universal for Apple Silicon and Intel, notarized by Apple.",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
     },
     {
       "@type": "FAQPage",
       "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Does it keep a Claude Code session running with the lid closed?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Clawake keeps the Mac awake, so a long Claude Code run, an agent task, a build, or any terminal process keeps going after you close the lid. Pair it with remote access and you can check on the session from your phone or another computer." }
-        },
-        {
-          "@type": "Question",
-          "name": "How do I keep my Mac awake with the lid closed?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Install Clawake, click the car icon in your menu bar, and switch it on. Your Mac stays awake with the lid shut, with no external monitor and no Terminal commands. Switch it off the same way when you want normal sleep back." }
-        },
-        {
-          "@type": "Question",
-          "name": "Does it work without an external monitor or power adapter?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Clawake keeps your Mac awake with the lid closed, on battery or on power, with no external display attached. It is a universal app that runs natively on both Apple Silicon and Intel, all from a small menu bar app." }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I reach my Mac remotely while the lid is closed?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Because the Mac stays awake instead of sleeping, remote access, SSH, and background servers keep working while it sits closed at home or travels in your bag." }
-        },
-        {
-          "@type": "Question",
-          "name": "Does it work with a corporate screen-lock policy?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Enterprise build, or turn off Don't lock the screen in the Standard build. Then Clawake only keeps the system awake, so the screen still locks on your company's schedule and asks for a password while your session keeps running behind the lock. Clawake never changes your lock policy." }
-        },
-        {
-          "@type": "Question",
-          "name": "What is the difference between the Standard and Enterprise builds of Clawake?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Standard keeps your Mac awake and, by default, keeps the screen unlocked so it never locks while Clawake is on (you can switch that off). The Enterprise build hides that control and never prevents locking, so the screen still locks on your company's schedule. Both keep the Mac awake, including with the lid closed." }
-        },
-        {
-          "@type": "Question",
-          "name": "Will my Mac overheat with the lid closed?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Clawake watches the temperature and pauses automatically if the Mac runs hot, then resumes once it cools. You can set the cutoff or turn the guard off in Settings. It can also pause on low battery." }
-        },
-        {
-          "@type": "Question",
-          "name": "How is Clawake different from other keep-awake apps?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Many keep-awake tools only stop idle sleep, so the Mac still sleeps the moment you close the lid. Clawake holds it awake through a closed lid. It is a tiny native app, under a megabyte, notarized by Apple, with no account and no Dock icon." }
-        }
+        { "@type": "Question", "name": "Does it keep a Claude Code session running with the lid closed?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Clawake keeps the Mac awake, so a long Claude Code run, an agent task, a build, or any terminal process keeps going after you close the lid. Pair it with remote access to check in from your phone or another computer." } },
+        { "@type": "Question", "name": "Does it work without an external monitor or power adapter?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Clawake keeps your Mac awake with the lid closed, on battery or on power, with no external display attached. It is a universal app that runs natively on Apple Silicon and Intel." } },
+        { "@type": "Question", "name": "Can I reach my Mac remotely while the lid is closed?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Because the Mac stays awake instead of sleeping, remote access, SSH, and background servers keep working while it sits closed at home or travels in your bag." } },
+        { "@type": "Question", "name": "Does it work with a corporate screen-lock policy?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Enterprise build, or turn off Don't lock the screen in the standard build. Then Clawake only keeps the system awake, so the screen still locks on your company's schedule while your session keeps running behind the lock." } },
+        { "@type": "Question", "name": "Will my Mac overheat with the lid closed?", "acceptedAnswer": { "@type": "Answer", "text": "Clawake watches the temperature and pauses automatically if the Mac runs hot, then resumes once it cools. You can set the cutoff or turn the guard off, and it can also pause on low battery." } },
+        { "@type": "Question", "name": "How do I uninstall Clawake?", "acceptedAnswer": { "@type": "Answer", "text": "Drag Clawake to the Trash. If you enabled lid-closed keep-awake, it restores normal sleep and removes its helper as part of that, leaving nothing behind." } }
       ]
     }
   ]
