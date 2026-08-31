@@ -148,18 +148,15 @@ out-of-repo `cc-caffeine/assets` folder (which is gone). With no identity set it
 still ad-hoc signs for local runs. The hardened-runtime signing command and the
 entitlements file are verified valid (`flags=0x10000(runtime)`, strict verify passes).
 
-**Signing identity (done): personal Individual account.** The release is signed
-under **Developer ID Application: Itai Zeilig (UXXB9YTYKF)**, Apple ID
-`itaizeilig1@gmail.com`. The earlier Sosna Moving Ltd (`LZ45Q8WB49`) Developer ID
-cert and notary profile were removed on purpose; do not use Sosna to sign Clawake.
-A stored notary profile named `clawake-notary` holds the personal credentials.
-(A pre-existing *Apple Distribution: Sosna Moving Ltd* cert may still be in the
-keychain for unrelated company work; it is not used by Clawake.)
+**Signing identity (done).** The release is signed with a **Developer ID
+Application** certificate and notarized under an Apple Developer account. The build
+takes the identity and a stored `notarytool` credential profile from environment
+variables, so no account details are hardcoded.
 
 1. **Sign + notarize (one command):**
    ```
-   export DEVID_IDENTITY="Developer ID Application: Itai Zeilig (UXXB9YTYKF)"
-   export NOTARY_PROFILE=clawake-notary
+   export DEVID_IDENTITY="Developer ID Application: <Your Name> (<TEAMID>)"
+   export NOTARY_PROFILE=<your-notarytool-profile>
    ./build-app.sh
    ```
    The script does hardened-runtime sign → DMG → `notarytool submit --wait` →
