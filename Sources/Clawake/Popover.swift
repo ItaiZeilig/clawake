@@ -1,18 +1,41 @@
 import AppKit
 import SwiftUI
 
+enum PanelStyle {
+    case material  // native frosted, adapts to light/dark
+    case solid     // solid dark, branded
+}
+
+/// A larger, brand-colored switch. Custom-drawn so it renders in previews and
+/// reads as designed rather than a stock control.
+struct BrandSwitch: View {
+    let isOn: Bool
+    let onColor: Color
+
+    var body: some View {
+        ZStack(alignment: isOn ? .trailing : .leading) {
+            Capsule().fill(isOn ? onColor : Color.secondary.opacity(0.35))
+            Circle()
+                .fill(Color.white)
+                .padding(3)
+                .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
+        }
+        .frame(width: 50, height: 30)
+        .animation(.easeInOut(duration: 0.15), value: isOn)
+    }
+}
+
 /// The main control: a native NSPopover with a designed SwiftUI panel.
 final class PopoverController {
     let popover = NSPopover()
 
-    init(controller: Controller, onOpenSetup: @escaping () -> Void) {
+    init(controller: Controller, style: PanelStyle = .material, onOpenSetup: @escaping () -> Void) {
         popover.behavior = .transient  // click-away dismissal, like a system menu
         popover.animates = true
+        if style == .solid { popover.appearance = NSAppearance(named: .darkAqua) }
         let view = PopoverView(
-            controller: controller,
-            onSetup: { onOpenSetup() },
-            onQuit: { NSApp.terminate(nil) }
-        )
+            controller: controller, style: style,
+            onSetup: { onOpenSetup() }, onQuit: { NSApp.terminate(nil) })
         popover.contentViewController = NSHostingController(rootView: view)
     }
 
@@ -26,20 +49,9 @@ final class PopoverController {
     }
 }
 
-/// Translucent native material behind the panel (the standard macOS popover look).
-private struct VisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let v = NSVisualEffectView()
-        v.material = .popover
-        v.blendingMode = .behindWindow
-        v.state = .active
-        return v
-    }
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
-}
-
 struct PopoverView: View {
     @ObservedObject var controller: Controller
+    var style: PanelStyle = .material
     let onSetup: () -> Void
     let onQuit: () -> Void
 
@@ -48,53 +60,63 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().padding(.horizontal, 12)
-            mainRow
+            controlCard
             powerRow
-            Divider().padding(.horizontal, 12)
+            Divider().opacity(style == .solid ? 0.25 : 1)
             footer
         }
         .frame(width: 300)
-        .background(VisualEffectBackground().ignoresSafeArea())
+        .background(panelBackground)
     }
+
+    // MARK: header
 
     private var header: some View {
         HStack(spacing: 10) {
             if let img = carIcon(active: true) {
-                Image(nsImage: img).resizable().interpolation(.none).frame(width: 26, height: 26)
+                Image(nsImage: img).resizable().interpolation(.none).frame(width: 24, height: 24)
             }
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Clawake").font(.system(size: 14, weight: .semibold))
-                Text("Keeps your Mac awake").font(.system(size: 11)).foregroundColor(.secondary)
-            }
+            Text("Clawake").font(.system(size: 14, weight: .semibold))
             Spacer()
             Text("v\(appVersion())").font(.system(size: 10)).foregroundColor(.secondary)
         }
-        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 12)
+        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
     }
 
-    private var mainRow: some View {
+    // MARK: the hero control (big label + prominent switch)
+
+    private var controlCard: some View {
         HStack(spacing: 12) {
-            Circle().fill(dotColor).frame(width: 9, height: 9)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(controller.statusTitle).font(.system(size: 13, weight: .medium))
-                Text(controller.statusDetail).font(.system(size: 11)).foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(controller.isOn ? "On" : "Off")
+                    .font(.system(size: 20, weight: .bold))
+                HStack(spacing: 6) {
+                    Circle().fill(dotColor).frame(width: 8, height: 8)
+                    Text(controller.statusTitle).font(.system(size: 12)).foregroundColor(.secondary)
+                }
             }
             Spacer()
-            Toggle("", isOn: Binding(get: { controller.isOn }, set: { controller.setOn($0) }))
-                .labelsHidden().toggleStyle(.switch).tint(orange)
+            Button(action: { controller.setOn(!controller.isOn) }) {
+                BrandSwitch(isOn: controller.isOn, onColor: orange)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16).padding(.vertical, 14)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12).fill(cardFill)
+        )
+        .padding(.horizontal, 12).padding(.bottom, 10)
     }
 
     private var powerRow: some View {
         HStack(spacing: 6) {
             Image(systemName: controller.powerText.hasPrefix("Battery") ? "battery.100" : "powerplug")
-                .font(.system(size: 10)).foregroundColor(.secondary)
-            Text(controller.powerText).font(.system(size: 11)).foregroundColor(.secondary)
+                .font(.system(size: 10))
+            Text(controller.powerText).font(.system(size: 11))
             Spacer()
         }
-        .padding(.horizontal, 16).padding(.bottom, 12)
+        .foregroundColor(.secondary)
+        .padding(.horizontal, 18).padding(.bottom, 12)
     }
 
     private var footer: some View {
@@ -104,6 +126,19 @@ struct PopoverView: View {
             footerButton("Quit", symbol: "power", action: onQuit)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
+    }
+
+    // MARK: style bits
+
+    @ViewBuilder private var panelBackground: some View {
+        switch style {
+        case .material: Rectangle().fill(.regularMaterial).ignoresSafeArea()
+        case .solid: Color(red: 0.11, green: 0.11, blue: 0.12).ignoresSafeArea()
+        }
+    }
+
+    private var cardFill: Color {
+        style == .solid ? Color.white.opacity(0.06) : Color.primary.opacity(0.05)
     }
 
     private var dotColor: Color {
