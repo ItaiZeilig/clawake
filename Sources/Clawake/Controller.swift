@@ -154,6 +154,21 @@ final class Controller: ObservableObject {
 
     func shutdown() { power.releaseAll() }
 
+    /// Fully remove Clawake's footprint: turn off keep-awake, restore normal sleep,
+    /// remove the lid-closed sudoers helper (one admin prompt, only if installed),
+    /// and delete the saved settings. Ordering matters: `releaseAll` resets the deep
+    /// layer while the NOPASSWD rule still exists, then we remove the rule.
+    func uninstall() {
+        power.releaseAll()
+        if helperInstalled() {
+            // One admin prompt: belt-and-suspenders reset of sleep, then drop the rule.
+            let script = "do shell script \"/usr/bin/pmset -a disablesleep 0; "
+                + "rm -f \(Paths.sudoersFile)\" with administrator privileges"
+            _ = runProcess("/usr/bin/osascript", ["-e", script])
+        }
+        try? FileManager.default.removeItem(at: Paths.configDir)
+    }
+
     // MARK: helpers
 
     private func syncMirrors() {

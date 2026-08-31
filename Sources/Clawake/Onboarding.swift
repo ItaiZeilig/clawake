@@ -60,7 +60,10 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             rows
             Divider()
-            HStack {
+            HStack(spacing: 14) {
+                Button(action: performUninstall) { Text("Uninstall…").font(.system(size: 12)) }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
                 Text("v\(appVersion())").font(.system(size: 11)).foregroundColor(.secondary)
                 Spacer()
                 Button(action: onClose) {
@@ -196,6 +199,30 @@ struct SettingsView: View {
         controller.setLidClosedWanted(on)
         if on && !controller.helperReady() {
             controller.approveLid { _ in }
+        }
+    }
+
+    private func performUninstall() {
+        let alert = NSAlert()
+        alert.messageText = "Uninstall Clawake?"
+        alert.informativeText =
+            "This turns off keep-awake, restores normal sleep, removes the lid-closed "
+            + "helper and your settings, and moves Clawake to the Trash. You may be asked "
+            + "for your password."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Uninstall")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        controller.uninstall()
+
+        let bundle = Bundle.main.bundleURL
+        if bundle.pathExtension == "app" {
+            NSWorkspace.shared.recycle([bundle]) { _, _ in
+                DispatchQueue.main.async { NSApp.terminate(nil) }
+            }
+        } else {
+            NSApp.terminate(nil)  // dev build (not a .app); nothing to trash
         }
     }
 }

@@ -34,6 +34,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        // Scriptable uninstall: restore sleep, remove the helper, delete settings.
+        if CommandLine.arguments.contains("--uninstall") {
+            controller.uninstall()
+            print("Clawake uninstalled: sleep restored, lid-closed helper removed, settings deleted.")
+            exit(0)
+        }
+
         // Single instance only. A second copy would put a duplicate icon in the
         // menu bar and fight the first over the pmset/IOPMAssertion state, so if
         // another instance is already running, bring it forward and quit.
