@@ -13,14 +13,10 @@ final class OnboardingController {
             let w = NSWindow(contentViewController: NSHostingController(rootView: root))
             w.title = "Clawake Setup"
             w.styleMask = [.titled, .closable]
+            w.titleVisibility = .hidden
+            w.titlebarAppearsTransparent = true  // adapts to light/dark; blends with content
             w.setContentSize(NSSize(width: 460, height: 400))
             w.isReleasedWhenClosed = false
-            // The window is dark-themed regardless of the system light/dark setting,
-            // so force dark appearance (otherwise light mode draws black text on the
-            // dark background and a mismatched light title bar).
-            w.appearance = NSAppearance(named: .darkAqua)
-            w.titlebarAppearsTransparent = true
-            w.backgroundColor = NSColor(calibratedRed: 0.09, green: 0.09, blue: 0.10, alpha: 1)
             w.center()
             window = w
         }
@@ -43,39 +39,38 @@ struct OnboardingView: View {
     @State private var installing = false
     @State private var note1 = ""
 
-    private let bg = Color(red: 0.09, green: 0.09, blue: 0.10)
-    private let card = Color(red: 0.13, green: 0.13, blue: 0.15)
     private let orange = Color(red: 0.91, green: 0.52, blue: 0.29)
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    VStack(spacing: 6) {
-                        if let img = carIcon(active: true) {
-                            Image(nsImage: img).resizable().interpolation(.none)
-                                .frame(width: 56, height: 56)
-                        }
-                        Text("Welcome to Clawake").font(.system(size: 22, weight: .bold))
-                        Text("Finish setup to start keeping your Mac awake.")
-                            .foregroundColor(.secondary)
-                    }.padding(.top, 8)
+            VStack(spacing: 18) {
+                VStack(spacing: 8) {
+                    if let img = carIcon(active: true) {
+                        Image(nsImage: img).resizable().interpolation(.none)
+                            .frame(width: 56, height: 56)
+                    }
+                    Text("Welcome to Clawake").font(.system(size: 22, weight: .bold))
+                    Text("Finish setup to start keeping your Mac awake.")
+                        .font(.system(size: 12)).foregroundColor(.secondary)
+                }.padding(.top, 6)
 
-                    cardBox(number: 1, done: setupDone, title: "Allow lid-closed keep-awake",
-                            body: "Keeping your Mac awake with the lid closed requires a one-time macOS administrator approval. Clawake adds a small, scoped rule for this and never asks again.") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Button(action: enable) {
-                                Text(setupDone ? "Enabled" : (installing ? "Waiting for password…" : "Enable"))
-                            }
-                            .tint(orange)
-                            .disabled(setupDone || installing)
-                            if !note1.isEmpty {
-                                Text(note1).font(.caption).foregroundColor(.secondary)
-                            }
+                cardBox(number: 1, done: setupDone, title: "Allow lid-closed keep-awake",
+                        body: "Keeping your Mac awake with the lid closed needs a one-time macOS administrator approval. Clawake adds a small, scoped rule for this and never asks again.") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button(action: enable) {
+                            Text(setupDone ? "Enabled" : (installing ? "Waiting for password…" : "Enable"))
+                                .frame(minWidth: 64)
+                        }
+                        .tint(orange)
+                        .controlSize(.large)
+                        .disabled(setupDone || installing)
+                        if !note1.isEmpty {
+                            Text(note1).font(.system(size: 11)).foregroundColor(.secondary)
                         }
                     }
-                }.padding(24)
-            }
+                }
+            }.padding(24)
+            Spacer(minLength: 0)
             Divider()
             HStack {
                 Button(action: onClose) { Text("Close").foregroundColor(.secondary) }
@@ -84,8 +79,6 @@ struct OnboardingView: View {
             }.padding(.horizontal, 24).padding(.vertical, 14)
         }
         .frame(width: 460, height: 400)
-        .background(bg)
-        .environment(\.colorScheme, .dark)
         .onAppear(perform: refresh)
     }
 
@@ -95,22 +88,25 @@ struct OnboardingView: View {
     ) -> some View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
-                Circle().fill(done ? Color.green : Color.gray.opacity(0.3))
+                Circle().fill(done ? Color.green : Color.secondary.opacity(0.25))
                     .frame(width: 22, height: 22)
-                Text(done ? "✓" : "\(number)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(done ? .black : .white)
+                if done {
+                    Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white)
+                } else {
+                    Text("\(number)").font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).font(.system(size: 14, weight: .semibold))
                 Text(body).font(.system(size: 12)).foregroundColor(.secondary)
                 content()
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(15)
-        .background(card)
-        .cornerRadius(12)
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.05)))
     }
 
     private func enable() {
