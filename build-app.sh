@@ -33,6 +33,18 @@ ASSETS="assets"
 DEVID_IDENTITY="${DEVID_IDENTITY:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 
+# Notary credentials. Direct creds (apple-id/team-id/app-specific password) are
+# preferred because they work in any context; a stored keychain profile can be
+# unavailable to background/non-interactive processes. Set either:
+#   NOTARY_APPLE_ID / NOTARY_TEAM_ID / NOTARY_PASSWORD   (direct, robust)
+#   NOTARY_PROFILE                                       (stored profile)
+NOTARY_ARGS=()
+if [ -n "$NOTARY_APPLE_ID" ] && [ -n "$NOTARY_TEAM_ID" ] && [ -n "$NOTARY_PASSWORD" ]; then
+  NOTARY_ARGS=(--apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD")
+elif [ -n "$NOTARY_PROFILE" ]; then
+  NOTARY_ARGS=(--keychain-profile "$NOTARY_PROFILE")
+fi
+
 echo "Building release binary..."
 swift build -c release >/dev/null
 
@@ -165,11 +177,11 @@ OSA
 # stapled app, THEN notarize + staple that DMG. A stapler ticket is keyed to the
 # file's hash, so the DMG that gets stapled must be the exact one that was
 # submitted (never rebuilt afterward, or stapling fails with "Record not found").
-if [ -n "$DEVID_IDENTITY" ] && [ -n "$NOTARY_PROFILE" ]; then
+if [ -n "$DEVID_IDENTITY" ] && [ "${#NOTARY_ARGS[@]}" -gt 0 ]; then
   echo "Notarizing the app..."
   APPZIP="$(mktemp -d)/Clawake.zip"
   ditto -c -k --keepParent "$APP" "$APPZIP"
-  xcrun notarytool submit "$APPZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun notarytool submit "$APPZIP" "${NOTARY_ARGS[@]}" --wait
   rm -f "$APPZIP"
   xcrun stapler staple "$APP"          # app now carries its own ticket (offline-verifiable)
 
@@ -180,7 +192,7 @@ if [ -n "$DEVID_IDENTITY" ] && [ -n "$NOTARY_PROFILE" ]; then
   codesign --force --sign "$DEVID_IDENTITY" --timestamp "$DMG"
 
   echo "Notarizing the DMG..."
-  xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun notarytool submit "$DMG" "${NOTARY_ARGS[@]}" --wait
   xcrun stapler staple "$DMG"          # staple the SAME dmg that was submitted
 
   echo "Verifying..."
