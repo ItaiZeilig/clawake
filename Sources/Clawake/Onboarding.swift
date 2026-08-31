@@ -25,15 +25,16 @@ final class SettingsController {
             w.center()
             window = w
         }
-        NSApp.setActivationPolicy(.regular)  // let the window come forward
-        window?.makeKeyAndOrderFront(nil)
+        // Stay an accessory app (no Dock icon). An accessory app can still show
+        // and focus a window without switching to .regular.
         NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
     }
 
     func close() {
         controller.markOnboarded()
         window?.orderOut(nil)
-        NSApp.setActivationPolicy(.accessory)
     }
 }
 
