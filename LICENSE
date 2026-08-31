@@ -1,0 +1,27 @@
+Clawake — Proprietary License
+Copyright (c) 2026 Itai Zeilig. All rights reserved.
+
+This repository is made publicly viewable so that anyone can inspect how Clawake
+works and verify what it does. Being able to read the source code does NOT grant
+any license or right to it.
+
+Without the prior written permission of the copyright holder, you may NOT:
+
+  - use, compile, or run this source code, in whole or in part, for any purpose
+    other than reading it for personal inspection;
+  - copy, reproduce, modify, adapt, translate, or create derivative works from it;
+  - publish, distribute, sublicense, sell, or otherwise make it available to
+    others; or
+  - use the "Clawake" name, logo, car icon, or other branding.
+
+The compiled Clawake application distributed by the copyright holder (for example,
+through the official GitHub Releases) may be downloaded and used by end users, free
+of charge, for its intended purpose. That permission applies to the distributed
+binary only, not to the source code, and may be changed or revoked at any time.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
