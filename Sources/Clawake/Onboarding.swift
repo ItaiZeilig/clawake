@@ -12,12 +12,15 @@ final class SettingsController {
     func show() {
         if window == nil {
             let root = SettingsView(controller: controller, onClose: { [weak self] in self?.close() })
-            let w = NSWindow(contentViewController: NSHostingController(rootView: root))
+            let hosting = NSHostingController(rootView: root)
+            // Let the window size itself to the content's ideal height (and re-fit
+            // when a section expands/collapses), instead of a guessed fixed height.
+            hosting.sizingOptions = [.preferredContentSize]
+            let w = NSWindow(contentViewController: hosting)
             w.title = "Clawake"
-            w.styleMask = [.titled, .closable]
+            w.styleMask = [.titled, .closable]  // no .resizable: fixed to content
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true  // adapts to light/dark; blends with content
-            w.setContentSize(NSSize(width: 440, height: 600))
             w.isReleasedWhenClosed = false
             w.center()
             window = w
@@ -37,7 +40,6 @@ final class SettingsController {
 struct SettingsView: View {
     @ObservedObject var controller: Controller
     let onClose: () -> Void
-    var scroll = true  // ImageRenderer draws ScrollView content blank; off for render checks
 
     private let orange = Color(red: 0.91, green: 0.52, blue: 0.29)
     private let batteryOptions = [10, 15, 20, 30]
@@ -55,11 +57,7 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if scroll {
-                ScrollView { rows }
-            } else {
-                rows
-            }
+            rows
             Divider()
             HStack {
                 Button(action: onClose) { Text("Done").foregroundColor(.secondary) }
@@ -69,7 +67,7 @@ struct SettingsView: View {
             }
             .padding(.horizontal, 20).padding(.vertical, 14)
         }
-        .frame(width: 440, height: 600)
+        .frame(width: 440)  // fixed width, height fits the content
         .onAppear { controller.tick() }
     }
 
