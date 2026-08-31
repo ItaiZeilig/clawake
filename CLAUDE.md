@@ -1,0 +1,171 @@
+# CLAUDE.md — Clawake
+
+Guidance for Claude (and humans) working on **Clawake**. Read this first.
+
+## What Clawake is
+
+A tiny **native macOS menu-bar app** (Swift + AppKit + SwiftUI) that keeps a Mac
+awake, including **with the lid closed**. It lives only in the menu bar (a small
+car icon), has no Dock icon, and is deliberately small (the built app is ~750 KB,
+the DMG ~400 KB). It was rewritten from an earlier Electron prototype specifically
+to avoid Electron's ~100 MB bloat.
+
+- **Bundle id:** `app.clawake.desktop`
+- **Version:** 1.0.0
+- **Min macOS:** 13.0 (Ventura)
+- **Arch:** built for Apple Silicon (arm64); universal is a later step
+- **Support email:** itaizeilig1@gmail.com
+
+## How it keeps the Mac awake (the two layers)
+
+Clawake has two independent power layers. This split is the heart of the app.
+
+1. **Light layer (idle-sleep prevention).** `IOPMAssertionCreateWithName` with
+   `kIOPMAssertionTypePreventUserIdleSystemSleep`. No root, no admin, works even
+   inside the App Sandbox. This alone keeps the Mac awake while the lid is open.
+
+2. **Deep layer (lid-closed keep-awake).** `pmset -a disablesleep 1` (sets
+   `SleepDisabled`). This is what survives a closed lid. It **needs root**, so we
+   run it via `sudo -n /usr/bin/pmset ...` against a one-time **sudoers** rule
+   (`/etc/sudoers.d/clawake`, a `NOPASSWD` line for `pmset -a disablesleep *`)
+   that the app installs on first approval through one `osascript` admin prompt.
+   If the sudoers rule is missing, the code falls back to a single osascript admin
+   prompt (with a 5-minute cooldown so a decline does not re-prompt every cycle).
+
+The deep layer only engages when the user turned the "lid closed" setting **on**
+AND the sudoers helper is installed. Otherwise the app still runs the light layer,
+so it is useful out of the box and never prompts unless you ask for lid-closed.
+
+## Architecture (file by file)
+
+All source is in `Sources/Clawake/`.
+
+- `main.swift` — `NSApplication` bootstrap; sets the `AppDelegate`.
+- `App.swift` — `AppDelegate`. Creates the `NSStatusItem` (car icon), the popover,
+  and the Settings window; runs a 5-second `Timer` that calls `controller.tick()`;
+  opens Settings on first launch (`!didOnboard`). Also `carIcon(active:)` and
+  `appVersion()`. The app is `.accessory` (LSUIElement) the whole time, so **no
+  Dock icon** ever.
+- `Model.swift` — pure logic, no side effects. `Mode` (on/off), `Decision`,
+  `decide(_:)` (the single decision function: off, battery floor, only-on-AC,
+  thermal pause, else awake with `deep = lidClosed`). Thermal helpers
+  (`ThermalLevel`, `atOrAboveCutoff`, `nextThermalPaused` hysteresis latch,
+  `thermalCutoff`, `thermalLabel`), and `parsePmsetBatt`.
+- `Config.swift` — `Config` (mode, lidClosed, pauseOnLowBattery, battery{min_percent,
+  only_on_ac}, thermal{protect, cutoff}, notifications, didOnboard) with **tolerant
+  decoding** (older config files missing new keys still load). `Paths`: config at
+  `~/.claude/plugins/clawake/config.json`, sudoers at `/etc/sudoers.d/clawake`.
+- `Controller.swift` — `ObservableObject` orchestrator + all published UI state.
+  `tick()` reads power and thermal, computes the `Decision`, applies it, and
+  publishes state (awake, isOn, statusTitle/detail, powerText, thermalText/level,
+  lidClosedOn, lidApprovalNeeded, and the settings mirrors). Setters save config and
+  re-tick. `approveLid` runs the admin install off the main thread, then ticks.
+- `Power.swift` — `PowerController.apply(_:)` (light via IOPMAssertion, deep via
+  `setDeep`, single-flight + cooldown). `setDeep` calls `sudo -n /usr/bin/pmset ...`
+  first (matches the sudoers rule, no password), falls back to osascript admin.
+  `helperInstalled()` / `installHelper()` (writes and validates the sudoers file
+  via `visudo -cf`).
+- `Sensors.swift` — `readThermal()` (`ProcessInfo.thermalState`), `readPower()`
+  (`pmset -g batt`).
+- `Popover.swift` — the menu-bar panel. `PanelStyle`, custom-drawn `BrandSwitch`
+  (orange On/Off switch) and `SegmentedPills` (see the render note below for why
+  these are custom), `PopoverController` (an `NSPopover`, `.transient`), and
+  `PopoverView` (header, hero On/Off card with the switch + status dot, an inline
+  **Approve** banner when lid-closed is on but not yet approved, an info block
+  showing **Power / Temperature / Lid closed**, and a Settings/Quit footer).
+- `Onboarding.swift` — the Settings window (also the first-run welcome). Note the
+  file is named `Onboarding.swift` but the types are `SettingsController` /
+  `SettingsView`. Rows: lid-closed, pause-on-low-battery (+ % pills), only-on-AC,
+  cool-down protection (+ Hot/Very-hot pills), Done footer. The window uses
+  `NSHostingController.sizingOptions = [.preferredContentSize]` so it **fits its
+  content height** and re-fits when a section expands. It stays `.accessory` and is
+  brought forward with `activate(ignoringOtherApps:)` + `orderFrontRegardless()`
+  (never `.regular`, so it adds no Dock icon).
+- `Shell.swift` — `runProcess(_:_:)` wrapper around `Process`.
+- `build-app.sh` — assembles `Clawake.app` (Info.plist with `LSUIElement`, copies
+  the car icons + `AppIcon.icns`), ad-hoc codesigns, and builds the DMG with
+  `hdiutil`. Icons come from `~/Documents/cc-caffeine/assets` in the original
+  environment; adjust the asset paths if that folder is not present.
+
+## Build and run
+
+```
+cd clawake-mac
+swift build -c release           # compile (needs Command Line Tools or Xcode)
+./build-app.sh                   # assemble Clawake.app + DMG into release/
+open release/Clawake.app         # run it (icon appears in the menu bar)
+```
+
+Xcode also opens the package directly: `File > Open` the folder (or open
+`Package.swift`). There is no `.xcodeproj`; it is a Swift Package.
+
+## Distribution: the important decision (already researched)
+
+**Goal:** ship a version people can install and that Apple trusts.
+
+**Key finding — the App Store is NOT a fit, because of the lid-closed feature.**
+Every Mac App Store app must run in the **App Sandbox**, which forbids exactly what
+the deep layer needs: shelling out to `sudo`, writing `/etc/sudoers.d/`, running
+`osascript` with admin, and running `pmset` as root. There is **no public,
+sandbox-safe API** to keep a portable awake with the lid closed and no external
+display: the only real routes are `pmset disablesleep` (needs root) or Apple's
+private **SkyLight** framework (needs a private entitlement and SIP disabled).
+Even Amphetamine, which lists lid-closed on the App Store, **offloads to a separate
+out-of-store helper ("Power Protect") on Apple Silicon** to make it work. So the
+feature inherently lives outside the sandbox.
+
+**Chosen path: notarized Developer ID DMG (outside the App Store).** It keeps every
+feature, and it is still Apple-approved via **notarization** (Gatekeeper trusts it,
+opens with no warning). This is where serious lid-closed utilities live
+(KeepingYouAwake, Caffeine, etc.).
+
+The light layer (IOPMAssertion) is fully sandbox-safe, so a future App-Store "lite"
+build that keeps the Mac awake with the lid **open** (plus the thermal/battery
+guards) is possible, but it must drop lid-closed. Not the current priority.
+
+## Next steps (to productionize the notarized DMG)
+
+Prerequisite: an **Apple Developer Program** account ($99/yr) and a **Developer ID
+Application** certificate. The user owns this step.
+
+1. **Sign + notarize.** Replace the ad-hoc `codesign --sign -` in `build-app.sh`
+   with the Developer ID identity, add the **hardened runtime** (`--options runtime`),
+   then `xcrun notarytool submit release/Clawake-1.0.0-arm64.dmg --keychain-profile
+   <profile> --wait` and `xcrun stapler staple` both the `.app` and the `.dmg`.
+   Hardened runtime is required for notarization.
+2. **(Recommended) Upgrade the lid helper.** Replace the `sudoers` approach with a
+   proper **`SMAppService`** privileged launchd daemon (macOS 13+) that runs as root
+   and talks to the app over XPC. Cleaner than editing sudoers, survives OS updates,
+   and is the mechanism Apple documents for privileged operations. Notarization does
+   not require this (the current sudoers app notarizes fine), it is polish.
+3. **Distribute.** A one-page landing site (free on GitHub Pages) with a Download
+   button pointing at a **GitHub Releases** DMG. Add **Sparkle** later for
+   auto-updates; a Homebrew Cask is an easy bonus.
+4. **Universal binary + icons.** Build `arm64` + `x86_64` if you want Intel support;
+   confirm the app icon set is complete.
+
+## Working notes for Claude
+
+- **You cannot screenshot the running GUI** here (Screen Recording is blocked). To
+  see a SwiftUI view, render it with `ImageRenderer(content:).nsImage`, composite it
+  on an `NSColor` background, write a PNG to `/tmp`, and Read it. `ImageRenderer` is
+  `@MainActor`; call it inside `MainActor.assumeIsolated { }` from a delegate method.
+- **ImageRenderer gotchas** (why some UI is custom-drawn): native `Toggle`/`Button`
+  render as a yellow placeholder box, `ScrollView` content renders blank, and
+  `NSViewRepresentable` hangs the renderer. That is why the switch (`BrandSwitch`)
+  and the choice control (`SegmentedPills`) are custom-drawn, and why the render
+  helper passed `scroll: false`. These controls all work normally when the app runs
+  live; the placeholder only appears in the render.
+- **Verify guards by breaking them.** When a test or check is supposed to catch a
+  bug, break the code and watch it fail before trusting it.
+
+## User preferences (carry these forward)
+
+- **No em dashes** in UI text or prose.
+- **Keep it professional**, not "vibe coded". Look at real product designs.
+- **Stay tiny and native.** Do not reach for Electron or heavy frameworks.
+- **Keep it simple: On / Off.** An earlier "follow Claude sessions" mode and timer
+  were deliberately removed. Do not reintroduce modes without being asked.
+- Adaptive light/dark everywhere (the panel and the Settings window both follow the
+  system theme).
+</content>
