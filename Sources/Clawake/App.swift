@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let controller = Controller()
     var statusItem: NSStatusItem!
     var popoverController: PopoverController!
-    var onboarding: OnboardingController?
+    var settings: SettingsController?
     var timer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         popoverController = PopoverController(
-            controller: controller, onOpenSetup: { [weak self] in self?.openOnboarding() })
+            controller: controller, onOpenSetup: { [weak self] in self?.openSettings() })
 
         controller.onChange = { [weak self] in self?.refreshIcon() }
         controller.tick()
@@ -40,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.controller.tick()
         }
 
-        if !controller.setupComplete { openOnboarding() }
+        if !controller.didOnboard { openSettings() }
         refreshIcon()
     }
 
@@ -50,11 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func statusClicked() {
         guard let button = statusItem.button else { return }
-        if controller.setupComplete {
-            popoverController.toggle(from: button)
-        } else {
-            openOnboarding()
-        }
+        popoverController.toggle(from: button)
     }
 
     func refreshIcon() {
@@ -62,8 +58,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.toolTip = "Clawake: \(controller.statusTitle)"
     }
 
-    func openOnboarding() {
-        if onboarding == nil { onboarding = OnboardingController(controller: controller) }
-        onboarding?.show()
+    func openSettings() {
+        if settings == nil { settings = SettingsController(controller: controller) }
+        settings?.show()
     }
 }

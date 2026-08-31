@@ -11,17 +11,44 @@ enum PanelStyle {
 struct BrandSwitch: View {
     let isOn: Bool
     let onColor: Color
+    var size: CGFloat = 1.0
 
     var body: some View {
         ZStack(alignment: isOn ? .trailing : .leading) {
             Capsule().fill(isOn ? onColor : Color.secondary.opacity(0.35))
             Circle()
                 .fill(Color.white)
-                .padding(3)
+                .padding(3 * size)
                 .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
         }
-        .frame(width: 50, height: 30)
+        .frame(width: 50 * size, height: 30 * size)
         .animation(.easeInOut(duration: 0.15), value: isOn)
+    }
+}
+
+/// A small custom segmented control (pills). Custom-drawn so it renders in
+/// previews and stays on-brand next to BrandSwitch.
+struct SegmentedPills: View {
+    let options: [String]
+    let selected: Int
+    let onSelect: (Int) -> Void
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(options.enumerated()), id: \.offset) { i, label in
+                Button(action: { onSelect(i) }) {
+                    Text(label)
+                        .font(.system(size: 12, weight: i == selected ? .semibold : .regular))
+                        .foregroundColor(i == selected ? .white : .secondary)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(i == selected ? tint : Color.secondary.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 
@@ -61,7 +88,8 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             header
             controlCard
-            powerRow
+            if controller.lidApprovalNeeded { approvalBanner }
+            infoSection
             Divider().opacity(style == .solid ? 0.25 : 1)
             footer
         }
@@ -108,20 +136,66 @@ struct PopoverView: View {
         .padding(.horizontal, 12).padding(.bottom, 10)
     }
 
-    private var powerRow: some View {
-        HStack(spacing: 6) {
-            Image(systemName: controller.powerText.hasPrefix("Battery") ? "battery.100" : "powerplug")
-                .font(.system(size: 10))
-            Text(controller.powerText).font(.system(size: 11))
-            Spacer()
+    // MARK: live info (power / temperature / lid)
+
+    private var infoSection: some View {
+        VStack(spacing: 8) {
+            infoRow(
+                symbol: controller.powerText.hasPrefix("Battery") ? "battery.100" : "powerplug",
+                label: "Power", value: controller.powerText, tint: .secondary)
+            infoRow(
+                symbol: "thermometer.medium", label: "Temperature",
+                value: controller.thermalText, tint: thermalColor)
+            infoRow(
+                symbol: controller.lidClosedOn ? "laptopcomputer" : "laptopcomputer.slash",
+                label: "Lid closed",
+                value: controller.lidClosedOn ? "On" : "Off",
+                tint: .secondary)
         }
-        .foregroundColor(.secondary)
         .padding(.horizontal, 18).padding(.bottom, 12)
+    }
+
+    private func infoRow(symbol: String, label: String, value: String, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 11)).foregroundColor(.secondary)
+                .frame(width: 16)
+            Text(label).font(.system(size: 12)).foregroundColor(.secondary)
+            Spacer()
+            Text(value).font(.system(size: 12, weight: .medium)).foregroundColor(tint)
+        }
+    }
+
+    private var thermalColor: Color {
+        switch controller.thermalLevelRaw {
+        case ThermalLevel.serious.rawValue: return orange
+        case ThermalLevel.critical.rawValue: return .red
+        case ThermalLevel.fair.rawValue: return .primary
+        default: return .secondary
+        }
+    }
+
+    private var approvalBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.shield").font(.system(size: 12)).foregroundColor(orange)
+            Text("Approve lid-closed keep-awake")
+                .font(.system(size: 11)).foregroundColor(.primary)
+            Spacer()
+            Button(action: { controller.approveLid { _ in } }) {
+                Text("Approve")
+                    .font(.system(size: 11, weight: .semibold)).foregroundColor(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(orange))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(orange.opacity(0.12)))
+        .padding(.horizontal, 12).padding(.bottom, 10)
     }
 
     private var footer: some View {
         HStack {
-            footerButton("Setup", symbol: "gearshape", action: onSetup)
+            footerButton("Settings", symbol: "gearshape", action: onSetup)
             Spacer()
             footerButton("Quit", symbol: "power", action: onQuit)
         }

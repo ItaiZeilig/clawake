@@ -19,6 +19,9 @@ struct DecideInput {
     var minPercent: Int
     var onlyOnAC: Bool
     var thermalPaused: Bool
+    /// Whether the lid-closed (deep) layer should engage while awake. The caller
+    /// passes `false` when the user turned it off, or when it isn't approved yet.
+    var lidClosed: Bool
 }
 
 func decide(_ i: DecideInput) -> Decision {
@@ -36,8 +39,8 @@ func decide(_ i: DecideInput) -> Decision {
     if i.thermalPaused {
         return Decision(awake: false, deep: false, reason: "thermal")
     }
-    // On, and lid-closed is always part of keeping awake.
-    return Decision(awake: true, deep: true, reason: "on")
+    // On. Lid-closed rides along only when the user asked for it and it's approved.
+    return Decision(awake: true, deep: i.lidClosed, reason: "on")
 }
 
 // MARK: - Thermal (ported from thermal.ts)
@@ -60,6 +63,17 @@ func nextThermalPaused(_ prev: Bool, _ state: ThermalLevel, _ cutoff: ThermalLev
 
 func thermalCutoff(from string: String) -> ThermalLevel {
     return string == "critical" ? .critical : .serious
+}
+
+/// Human-friendly name for the current temperature, shown in the panel.
+func thermalLabel(_ level: ThermalLevel) -> String {
+    switch level {
+    case .nominal: return "Normal"
+    case .fair: return "Warm"
+    case .serious: return "Hot"
+    case .critical: return "Very hot"
+    case .unknown: return "—"
+    }
 }
 
 // MARK: - Battery (ported from battery.ts)
