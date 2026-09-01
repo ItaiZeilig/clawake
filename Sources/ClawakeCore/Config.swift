@@ -27,7 +27,6 @@ public struct Config: Codable {
     public var pauseOnLowBattery: Bool  // whether the battery floor applies at all
     public var battery: BatteryConfig
     public var thermal: ThermalConfig
-    public var notifications: Bool
     public var didOnboard: Bool         // has the welcome screen been shown once
 
     public static let defaults = Config(
@@ -37,24 +36,22 @@ public struct Config: Codable {
         pauseOnLowBattery: true,
         battery: BatteryConfig(min_percent: 15, only_on_ac: false),
         thermal: ThermalConfig(protect: true, cutoff: "serious"),
-        notifications: true,
         didOnboard: false
     )
 
     // Tolerate configs written by older builds that lacked the newer keys.
     enum CodingKeys: String, CodingKey {
-        case mode, lidClosed, preventLock, pauseOnLowBattery, battery, thermal, notifications, didOnboard
+        case mode, lidClosed, preventLock, pauseOnLowBattery, battery, thermal, didOnboard
     }
 
     public init(mode: Mode, lidClosed: Bool, preventLock: Bool, pauseOnLowBattery: Bool,
-                battery: BatteryConfig, thermal: ThermalConfig, notifications: Bool, didOnboard: Bool) {
+                battery: BatteryConfig, thermal: ThermalConfig, didOnboard: Bool) {
         self.mode = mode
         self.lidClosed = lidClosed
         self.preventLock = preventLock
         self.pauseOnLowBattery = pauseOnLowBattery
         self.battery = battery
         self.thermal = thermal
-        self.notifications = notifications
         self.didOnboard = didOnboard
     }
 
@@ -67,7 +64,6 @@ public struct Config: Codable {
         pauseOnLowBattery = try c.decodeIfPresent(Bool.self, forKey: .pauseOnLowBattery) ?? d.pauseOnLowBattery
         battery = try c.decodeIfPresent(BatteryConfig.self, forKey: .battery) ?? d.battery
         thermal = try c.decodeIfPresent(ThermalConfig.self, forKey: .thermal) ?? d.thermal
-        notifications = try c.decodeIfPresent(Bool.self, forKey: .notifications) ?? d.notifications
         didOnboard = try c.decodeIfPresent(Bool.self, forKey: .didOnboard) ?? d.didOnboard
     }
 }
@@ -76,8 +72,6 @@ public enum Paths {
     public static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
     public static var configDir: URL { home.appendingPathComponent(".claude/plugins/clawake", isDirectory: true) }
     public static var configFile: URL { configDir.appendingPathComponent("config.json") }
-    public static var socketPath: String { configDir.appendingPathComponent("control.sock").path }
-    public static var settingsFile: URL { home.appendingPathComponent(".claude/settings.json") }
 }
 
 public func loadConfig() -> Config {
