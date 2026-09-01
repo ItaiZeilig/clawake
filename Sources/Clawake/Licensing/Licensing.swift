@@ -23,6 +23,14 @@ final class Licensing: ObservableObject {
     private static let account = "record"
 
     init() {
+        // The render/preview tool runs as an unsigned binary; touching the Keychain
+        // there pops a blocking "wants to access your keychain" prompt. Use an
+        // ephemeral in-memory trial instead so previews never hit the Keychain.
+        if Licensing.isPreview {
+            record = LicenseRecord(trialStart: Date())
+            state = evaluateLicense(record)
+            return
+        }
         record = Licensing.load() ?? LicenseRecord()
         // First ever launch: start the trial clock.
         if record.licenseKey == nil, record.trialStart == nil {
@@ -30,6 +38,11 @@ final class Licensing: ObservableObject {
             Licensing.save(record)
         }
         state = evaluateLicense(record)
+    }
+
+    private static var isPreview: Bool {
+        let args = CommandLine.arguments
+        return args.contains("--render-panel") || args.contains("--render-settings")
     }
 
     var isActive: Bool { state.isActive }

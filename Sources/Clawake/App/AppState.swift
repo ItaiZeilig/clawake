@@ -67,6 +67,9 @@ final class AppState: ObservableObject {
         mode = config.mode
         isEnterprise = (Bundle.main.infoDictionary?["ClawakeEnterprise"] as? Bool) ?? false
         syncMirrors()
+        // Reflect license/trial state on the very first paint, before the first tick.
+        trialEnded = !licensing.isActive
+        trialDaysLeft = licensing.trialDaysLeft
         // When the license/trial state changes (activation, expiry), re-publish and
         // re-decide immediately so the hard stop engages or lifts without waiting.
         licensing.objectWillChange
@@ -306,7 +309,8 @@ extension AppState {
     /// creates no power assertions. Same-file so it can set the private(set) fields.
     func fillForRender(
         isOn: Bool, awake: Bool, statusTitle: String, powerText: String,
-        thermalText: String, thermalLevel: ThermalLevel, lidClosedOn: Bool
+        thermalText: String, thermalLevel: ThermalLevel, lidClosedOn: Bool,
+        trialEnded: Bool = false, trialDaysLeft: Int? = nil, lidApprovalNeeded: Bool = false
     ) {
         self.isOn = isOn
         self.awake = awake
@@ -315,6 +319,8 @@ extension AppState {
         self.thermalText = thermalText
         self.thermalLevelRaw = thermalLevel.rawValue
         self.lidClosedOn = lidClosedOn
-        self.lidApprovalNeeded = false
+        self.lidApprovalNeeded = lidApprovalNeeded
+        self.trialEnded = trialEnded
+        self.trialDaysLeft = trialDaysLeft
     }
 }
