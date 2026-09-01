@@ -13,7 +13,8 @@ func renderPanel(to path: String) {
         controller.fillForRender(
             isOn: true, awake: true, statusTitle: "Keeping your Mac awake",
             powerText: "Battery 84%", thermalText: "Normal",
-            thermalLevel: .nominal, lidClosedOn: true)
+            thermalLevel: .nominal, lidClosedOn: true,
+            statusDetail: "Claude Code keeps running, lid closed")
 
         // The .solid style is a dark panel; the live app forces darkAqua so the
         // semantic text colors resolve light. ImageRenderer defaults to light, so

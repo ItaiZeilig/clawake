@@ -4,11 +4,12 @@
 
 # Clawake
 
-**Keep your Mac awake, even with the lid closed.**
+**Keep Claude Code running with the lid closed.**
 
-A tiny, native macOS menu bar app. Close the lid and your work keeps running: a build,
-a local server, an SSH session, or a long agent task stays alive while the Mac is shut
-in your bag or on your desk.
+A tiny, native macOS menu bar app. Start a Claude Code session, shut the lid, and it keeps
+working: your agent run, build, local server, or SSH session stays alive while the Mac is
+closed in your bag or on your desk. Clawake keeps the whole Mac awake, so anything you
+leave running keeps going, and you can reconnect from anywhere.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-1d1d1f?logo=apple&logoColor=white)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-f05138?logo=swift&logoColor=white)
@@ -28,10 +29,10 @@ in your bag or on your desk.
 
 ## Why
 
-macOS sleeps the moment you close the lid, and a sleeping Mac drops everything:
-your build stops, your server goes offline, your remote session dies. Clawake keeps
-the Mac awake so none of that happens. Start something long, shut the laptop, walk
-away, and pick it back up from anywhere.
+Close your MacBook lid and macOS sleeps, which drops everything: your Claude Code run
+stops, your build halts, your server goes offline, your remote session dies. Clawake keeps
+the Mac awake so none of that happens. Start a long Claude Code session, shut the laptop,
+walk away, and pick it back up from anywhere.
 
 It is deliberately small. It lives only in the menu bar (a little car icon), has no
 Dock icon, weighs about 2 MB, and does one thing well. No Electron, no background
@@ -42,7 +43,7 @@ bloat, no account.
 | | |
 |---|---|
 | **Works with the lid closed** | Keeps the Mac awake through a shut lid, with no external display required. |
-| **Your session survives** | Builds, servers, SSH, and agent runs keep going instead of freezing when the Mac would sleep. |
+| **Your session survives** | A Claude Code run, agent task, build, server, or SSH session keeps going instead of freezing when the Mac would sleep. |
 | **Auto-off timer** | Keep awake for 5m, 10m, 15m, 30m, 1h, 2h, 5h, or leave it unlimited. It turns itself off when time is up. |
 | **Battery guard** | Pause automatically when the battery runs low, so a forgotten session does not drain the Mac. |
 | **Cool-down protection** | Pause if the Mac runs hot, then resume once it cools. |

@@ -90,7 +90,7 @@ struct SettingsView: View {
             }
             Text(controller.didOnboard ? "Settings" : "Welcome to Clawake")
                 .font(.system(size: 20, weight: .bold))
-            Text("Choose how Clawake keeps your Mac awake.")
+            Text("Keep Claude Code running, even with the lid closed.")
                 .font(.system(size: 12)).foregroundColor(.secondary)
         }
         .padding(.top, 4).padding(.bottom, 4)

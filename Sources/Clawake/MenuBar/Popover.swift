@@ -88,6 +88,11 @@ struct PopoverView: View {
                     Circle().fill(dotColor).frame(width: 8, height: 8)
                     Text(controller.statusTitle).font(.system(size: 12)).foregroundColor(.secondary)
                 }
+                if !controller.statusDetail.isEmpty {
+                    Text(controller.statusDetail)
+                        .font(.system(size: 11)).foregroundColor(.secondary).opacity(0.75)
+                        .padding(.leading, 14)
+                }
                 if !controller.timerRemaining.isEmpty {
                     HStack(spacing: 5) {
                         Image(systemName: "timer").font(.system(size: 10))

@@ -262,7 +262,7 @@ final class AppState: ObservableObject {
 
     private func describe(decision: Decision, lidActive: Bool) -> (String, String) {
         if decision.awake {
-            if lidActive { return ("Keeping your Mac awake", "The lid can stay closed") }
+            if lidActive { return ("Keeping your Mac awake", "Claude Code keeps running, lid closed") }
             if lidApprovalNeeded { return ("Keeping your Mac awake", "Approve to allow the lid closed") }
             return ("Keeping your Mac awake", "Sleeps when you close the lid")
         }
@@ -282,11 +282,12 @@ extension AppState {
     func fillForRender(
         isOn: Bool, awake: Bool, statusTitle: String, powerText: String,
         thermalText: String, thermalLevel: ThermalLevel, lidClosedOn: Bool,
-        lidApprovalNeeded: Bool = false
+        statusDetail: String = "", lidApprovalNeeded: Bool = false
     ) {
         self.isOn = isOn
         self.awake = awake
         self.statusTitle = statusTitle
+        self.statusDetail = statusDetail
         self.powerText = powerText
         self.thermalText = thermalText
         self.thermalLevelRaw = thermalLevel.rawValue
