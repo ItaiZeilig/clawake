@@ -60,6 +60,32 @@ Two editions, chosen at build time:
   `AppState.isEnterprise` reads the plist flag and gates both the UI row and the
   display assertion. Both editions share the bundle id and the helper daemon.
 
+## Licensing and trial (Lemon Squeezy)
+
+Clawake is a paid app ($5 one-time) with a **30-day free trial** and a **hard stop**:
+once the trial ends and no license is active, `AppState.tick` overrides the decision
+to not-awake (`reason: "trial-ended"`), so nothing is kept awake until a key is
+entered. The whole trial/license *decision* is the pure `evaluateLicense` in
+`ClawakeCore` (unit-tested); all IO is in `Sources/Clawake/Licensing/`.
+
+- **State** lives in a `LicenseRecord` stored in the **Keychain** (service
+  `app.clawake.desktop.licensing`), NOT in the config dir, so it survives
+  trashing/reinstalling and is not wiped by `--uninstall`. A record is "licensed"
+  once it has an activated key whose last validation succeeded; otherwise the
+  `trialStart` date drives a 30-day countdown, then `.expired`. A paid license is
+  never expired just for being offline; only a `/validate` that returns invalid
+  (refund/disable) clears it.
+- **Purchase → activate:** the buyer gets a key by email, pastes it in Settings, and
+  the app calls Lemon Squeezy `POST /v1/licenses/activate` with `instance_name` = a
+  hashed hardware id (`MachineID`). These endpoints authenticate with the key itself,
+  so **no store secret is embedded**. On launch `licensing.refresh()` re-validates in
+  the background (offline-friendly). `deactivate` frees the machine to move the license.
+- **`LicenseConfig.checkoutURL`** in `Licensing.swift` is a **placeholder** — set it
+  to the real Lemon Squeezy product checkout URL before release.
+- **Honest limit:** without a backend the trial is Keychain-based, so a technical user
+  could delete the Keychain item to reset it. Accepted for a low-cost app; a true
+  server-side machine-id trial would need a small function later.
+
 ## Architecture (four SwiftPM targets)
 
 Defined in `Package.swift`. Dependencies point inward: the app links `ClawakeCore`
@@ -85,6 +111,9 @@ and it is covered by `Tests/ClawakeCoreTests/` (run `swift test`).
 - `Thermal.swift` — `ThermalLevel`, `atOrAboveCutoff`, `nextThermalPaused`
   (hysteresis latch), `thermalCutoff`, `thermalLabel`.
 - `PowerReading.swift` — `PowerReading` + `parsePmsetBatt`.
+- `License.swift` — `LicenseRecord` (persisted trial/license state), `LicenseState`
+  (trial/licensed/expired), `LicensePolicy.trialDays` (30), and the pure
+  `evaluateLicense(_:now:)`. See "Licensing and trial" below.
 - `Config.swift` — `Config` (mode, lidClosed, preventLock, pauseOnLowBattery,
   battery{min_percent, only_on_ac}, thermal{protect, cutoff}, notifications,
   didOnboard) with **tolerant decoding** (older config files missing new keys still
@@ -133,6 +162,10 @@ and it is covered by `Tests/ClawakeCoreTests/` (run `swift test`).
   `SegmentedPills` (see the render note below for why these are custom).
 - `UI/Icons.swift` — `carIcon(active:)` and `appVersion()`.
 - `Support/Render.swift` — `renderPanel` / `renderSettings` (marketing/preview PNGs).
+- `Licensing/` — the trial + license machinery (see "Licensing and trial" below):
+  `Licensing.swift` (`Licensing` ObservableObject + `LicenseConfig.checkoutURL`),
+  `LemonSqueezy.swift` (activate/validate/deactivate API), `Keychain.swift`
+  (generic-password storage), `MachineID.swift` (hashed `IOPlatformUUID`).
 
 ### `Sources/ClawakeShared/HelperProtocol.swift`
 

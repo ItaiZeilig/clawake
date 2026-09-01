@@ -45,9 +45,12 @@ struct SettingsView: View {
     private let orange = Color(red: 0.91, green: 0.52, blue: 0.29)
     private let batteryOptions = [10, 15, 20, 30]
 
+    @State private var licenseKeyInput = ""
+
     @ViewBuilder private var rows: some View {
         VStack(spacing: 14) {
             header
+            licenseCard
             timerRow
             lidRow
             if !controller.isEnterprise { lockRow }
@@ -94,6 +97,86 @@ struct SettingsView: View {
                 .font(.system(size: 12)).foregroundColor(.secondary)
         }
         .padding(.top, 4).padding(.bottom, 4)
+    }
+
+    // MARK: license
+
+    private var licenseCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: licenseIcon).font(.system(size: 16))
+                    .foregroundColor(licenseTint).frame(width: 22, height: 22)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(licenseTitle).font(.system(size: 14, weight: .semibold))
+                    Text(licenseSubtitle).font(.system(size: 12)).foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+            }
+
+            if controller.licensing.isLicensed {
+                Button(action: { controller.licensing.deactivate() }) {
+                    Text("Deactivate this Mac").font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain).padding(.leading, 34)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        TextField("Paste your license key", text: $licenseKeyInput)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 12))
+                            .disabled(controller.licensing.busy)
+                        Button(action: { controller.licensing.activate(key: licenseKeyInput) }) {
+                            Text(controller.licensing.busy ? "…" : "Activate")
+                                .font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(RoundedRectangle(cornerRadius: 7).fill(orange))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(controller.licensing.busy || licenseKeyInput.isEmpty)
+                    }
+                    HStack(spacing: 12) {
+                        Button(action: { NSWorkspace.shared.open(LicenseConfig.checkoutURL) }) {
+                            Text("Buy Clawake  ·  $5").font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(orange)
+                        }
+                        .buttonStyle(.plain)
+                        if let err = controller.licensing.lastError {
+                            Text(err).font(.system(size: 11)).foregroundColor(.red)
+                                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(.leading, 34)
+            }
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(licenseFill))
+    }
+
+    private var licenseIcon: String {
+        if controller.licensing.isLicensed { return "checkmark.seal.fill" }
+        return controller.trialEnded ? "exclamationmark.triangle.fill" : "clock.badge"
+    }
+    private var licenseTint: Color {
+        if controller.licensing.isLicensed { return .green }
+        return controller.trialEnded ? .red : orange
+    }
+    private var licenseTitle: String {
+        if controller.licensing.isLicensed { return "Licensed" }
+        if controller.trialEnded { return "Trial ended" }
+        let d = controller.trialDaysLeft ?? 0
+        return "Trial · \(d) day\(d == 1 ? "" : "s") left"
+    }
+    private var licenseSubtitle: String {
+        if controller.licensing.isLicensed { return "Thanks for supporting Clawake." }
+        if controller.trialEnded { return "Enter your license key to keep using Clawake." }
+        return "Buy once to keep Clawake after the trial. No subscription."
+    }
+    private var licenseFill: Color {
+        if controller.trialEnded { return Color.red.opacity(0.08) }
+        return Color.primary.opacity(0.05)
     }
 
     // MARK: rows
