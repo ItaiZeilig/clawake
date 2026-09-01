@@ -1,21 +1,7 @@
 import AppKit
 
-func carIcon(active: Bool) -> NSImage? {
-    let name = active ? "car-active" : "car-idle"
-    if let url = Bundle.main.url(forResource: name, withExtension: "png"),
-       let img = NSImage(contentsOf: url) {
-        img.size = NSSize(width: 20, height: 20)
-        return img
-    }
-    return nil
-}
-
-func appVersion() -> String {
-    (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
-}
-
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let controller = Controller()
+    let controller = AppState()
     var statusItem: NSStatusItem!
     var popoverController: PopoverController!
     var settings: SettingsController?

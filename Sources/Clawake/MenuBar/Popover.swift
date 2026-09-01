@@ -1,62 +1,17 @@
 import AppKit
 import SwiftUI
+import ClawakeCore
 
 enum PanelStyle {
     case material  // native frosted, adapts to light/dark
     case solid     // solid dark, branded
 }
 
-/// A larger, brand-colored switch. Custom-drawn so it renders in previews and
-/// reads as designed rather than a stock control.
-struct BrandSwitch: View {
-    let isOn: Bool
-    let onColor: Color
-    var size: CGFloat = 1.0
-
-    var body: some View {
-        ZStack(alignment: isOn ? .trailing : .leading) {
-            Capsule().fill(isOn ? onColor : Color.secondary.opacity(0.35))
-            Circle()
-                .fill(Color.white)
-                .padding(3 * size)
-                .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
-        }
-        .frame(width: 50 * size, height: 30 * size)
-        .animation(.easeInOut(duration: 0.15), value: isOn)
-    }
-}
-
-/// A small custom segmented control (pills). Custom-drawn so it renders in
-/// previews and stays on-brand next to BrandSwitch.
-struct SegmentedPills: View {
-    let options: [String]
-    let selected: Int
-    let onSelect: (Int) -> Void
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(options.enumerated()), id: \.offset) { i, label in
-                Button(action: { onSelect(i) }) {
-                    Text(label)
-                        .font(.system(size: 12, weight: i == selected ? .semibold : .regular))
-                        .foregroundColor(i == selected ? .white : .secondary)
-                        .padding(.horizontal, 12).padding(.vertical, 5)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .fill(i == selected ? tint : Color.secondary.opacity(0.12)))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-}
-
 /// The main control: a native NSPopover with a designed SwiftUI panel.
 final class PopoverController {
     let popover = NSPopover()
 
-    init(controller: Controller, style: PanelStyle = .material, onOpenSetup: @escaping () -> Void) {
+    init(controller: AppState, style: PanelStyle = .material, onOpenSetup: @escaping () -> Void) {
         popover.behavior = .transient  // click-away dismissal, like a system menu
         popover.animates = true
         if style == .solid { popover.appearance = NSAppearance(named: .darkAqua) }
@@ -88,7 +43,7 @@ final class PopoverController {
 }
 
 struct PopoverView: View {
-    @ObservedObject var controller: Controller
+    @ObservedObject var controller: AppState
     var style: PanelStyle = .material
     let onSetup: () -> Void
     let onQuit: () -> Void
@@ -132,6 +87,13 @@ struct PopoverView: View {
                 HStack(spacing: 6) {
                     Circle().fill(dotColor).frame(width: 8, height: 8)
                     Text(controller.statusTitle).font(.system(size: 12)).foregroundColor(.secondary)
+                }
+                if !controller.timerRemaining.isEmpty {
+                    HStack(spacing: 5) {
+                        Image(systemName: "timer").font(.system(size: 10))
+                        Text(controller.timerRemaining).font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(orange)
                 }
             }
             Spacer()

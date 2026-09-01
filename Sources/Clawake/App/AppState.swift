@@ -1,16 +1,23 @@
 import Combine
 import Foundation
 import ServiceManagement
+import ClawakeCore
 
 /// Orchestrator + observable app state for the SwiftUI panels. Runs on the main
 /// queue, so its state needs no locking.
-final class Controller: ObservableObject {
+final class AppState: ObservableObject {
     let power = PowerController()
 
     private var config: Config
     private var mode: Mode
     private var thermalPaused = false
     private var lastReason = "off"
+
+    /// Auto-off timer. When set, `tick()` flips the app to Off once the deadline
+    /// passes. It is a live session concept, not persisted: quitting ends it.
+    /// Minutes for each pill; index 0 ("Until off") means no countdown.
+    static let timerOptions = [0, 30, 60, 120]
+    private var timerDeadline: Date?
 
     // Published UI state (read by the popover / settings).
     @Published private(set) var awake = false
@@ -39,6 +46,11 @@ final class Controller: ObservableObject {
 
     @Published private(set) var didOnboard = false
 
+    // Auto-off timer mirrors for the UI. `timerRemaining` is "" when no countdown
+    // is running; `timerSelectionIndex` is the selected pill in Settings.
+    @Published private(set) var timerRemaining = ""
+    @Published private(set) var timerSelectionIndex = 0
+
     /// Extra callback for the AppKit status-item icon (SwiftUI observes directly).
     var onChange: (() -> Void)?
 
@@ -56,8 +68,33 @@ final class Controller: ObservableObject {
     func setMode(_ m: Mode) {
         mode = m
         config.mode = m
+        // Turning off by hand also cancels any running auto-off timer.
+        if m == .off { clearTimer() }
         saveConfig(config)
         tick()
+    }
+
+    /// Pick an auto-off duration. Index into `timerOptions`; 0 means "Until off"
+    /// (no countdown). Choosing a real duration also turns the app on, since the
+    /// point is to keep the Mac awake for that long.
+    func setTimer(index: Int) {
+        guard AppState.timerOptions.indices.contains(index) else { return }
+        timerSelectionIndex = index
+        let minutes = AppState.timerOptions[index]
+        if minutes <= 0 {
+            timerDeadline = nil
+        } else {
+            timerDeadline = Date().addingTimeInterval(TimeInterval(minutes * 60))
+            mode = .on
+            config.mode = .on
+            saveConfig(config)
+        }
+        tick()
+    }
+
+    private func clearTimer() {
+        timerDeadline = nil
+        timerSelectionIndex = 0
     }
 
     /// Turn the lid-closed setting on or off. Turning it on does NOT install the
@@ -128,6 +165,15 @@ final class Controller: ObservableObject {
     // MARK: the loop
 
     func tick() {
+        // Auto-off timer: once the deadline passes, flip to Off before deciding.
+        // Done inline (not via setMode) to avoid re-entering tick().
+        if let deadline = timerDeadline, Date() >= deadline {
+            clearTimer()
+            mode = .off
+            config.mode = .off
+            saveConfig(config)
+        }
+
         let p = readPower()
         let thermal = readThermal()
         let cutoff = thermalCutoff(from: config.thermal.cutoff)
@@ -163,13 +209,21 @@ final class Controller: ObservableObject {
         powerText = p.onBattery ? "Battery\(p.percent.map { " \($0)%" } ?? "")" : "AC power"
         thermalText = thermalLabel(thermal)
         thermalLevelRaw = thermal.rawValue
+        timerRemaining = timerDeadline.map { formatRemaining(Int($0.timeIntervalSinceNow.rounded())) } ?? ""
         syncMirrors()
         (statusTitle, statusDetail) = describe(decision: decision, lidActive: lidActive)
 
         onChange?()
     }
 
-    func shutdown() { power.releaseAll() }
+    /// Quitting must fully restore normal sleep. Reconcile the real system state
+    /// first (the in-memory `deepEngaged` flag can drift, e.g. a failed toggle or a
+    /// state left by an older build), then release every layer, so `SleepDisabled`
+    /// is never left set after the app exits.
+    func shutdown() {
+        power.adoptDeepState()
+        power.releaseAll()
+    }
 
     /// Fully remove Clawake's footprint: turn off keep-awake, restore normal sleep,
     /// unregister the privileged daemon, and delete the saved settings. Ordering
@@ -197,6 +251,14 @@ final class Controller: ObservableObject {
         didOnboard = config.didOnboard
     }
 
+    private func formatRemaining(_ seconds: Int) -> String {
+        let s = max(0, seconds)
+        let h = s / 3600, m = (s % 3600) / 60
+        if h > 0 { return "\(h)h \(m)m left" }
+        if m > 0 { return "\(m)m left" }
+        return "under a minute left"
+    }
+
     private func describe(decision: Decision, lidActive: Bool) -> (String, String) {
         if decision.awake {
             if lidActive { return ("Keeping your Mac awake", "The lid can stay closed") }
@@ -212,7 +274,7 @@ final class Controller: ObservableObject {
     }
 }
 
-extension Controller {
+extension AppState {
     /// Fill the published display state directly, for rendering a marketing or
     /// preview image of the real panel. Reads no sensors, writes no config, and
     /// creates no power assertions. Same-file so it can set the private(set) fields.

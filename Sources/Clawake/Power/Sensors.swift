@@ -1,4 +1,5 @@
 import Foundation
+import ClawakeCore
 
 // MARK: - Thermal (native, no root, no polling of private sensors)
 

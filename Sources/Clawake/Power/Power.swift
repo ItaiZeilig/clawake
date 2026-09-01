@@ -1,5 +1,6 @@
 import Foundation
 import IOKit.pwr_mgt
+import ClawakeCore
 
 /// Two layers:
 ///  - light: IOPMAssertion (prevent idle system sleep). No root.
@@ -35,19 +36,30 @@ final class PowerController {
             lightActive = false
         }
 
-        // Deep layer follows `deep`, at most one pmset op in flight.
+        // Deep layer follows `deep`, at most one pmset op in flight. We track
+        // `deepEngaged` as true only after a confirmed enable, and clear it only
+        // after a confirmed disable, so a failed daemon call retries on the next
+        // tick instead of leaving `SleepDisabled 1` stuck on. That leftover is a
+        // global system override: it would keep the Mac awake even when a guard
+        // (low battery, only-on-AC, thermal) has decided it should sleep.
         let wantDeep = decision.awake && decision.deep
         if !deepBusy {
             if wantDeep && !deepEngaged && Date() >= deepCooldownUntil {
                 deepBusy = true
                 let ok = setDeep(true)
                 deepEngaged = ok
-                if !ok { deepCooldownUntil = Date().addingTimeInterval(5 * 60) }
+                deepCooldownUntil = ok ? .distantPast : Date().addingTimeInterval(5 * 60)
                 deepBusy = false
-            } else if !wantDeep && deepEngaged {
+            } else if !wantDeep && deepEngaged && Date() >= deepCooldownUntil {
                 deepBusy = true
-                _ = setDeep(false)
-                deepEngaged = false
+                if setDeep(false) {
+                    deepEngaged = false
+                    deepCooldownUntil = .distantPast
+                } else {
+                    // Could not clear it right now; retry soon rather than every
+                    // tick, and keep `deepEngaged` true so we know it is still set.
+                    deepCooldownUntil = Date().addingTimeInterval(30)
+                }
                 deepBusy = false
             }
         }

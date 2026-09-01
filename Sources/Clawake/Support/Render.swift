@@ -1,12 +1,13 @@
 import AppKit
 import SwiftUI
+import ClawakeCore
 
 /// Renders the real `PopoverView` (the exact SwiftUI the live app draws) to a PNG.
 /// Used only for marketing/preview shots via `Clawake --render-panel <out.png>`.
 /// Not part of normal app launch.
 func renderPanel(to path: String) {
     MainActor.assumeIsolated {
-        let controller = Controller()
+        let controller = AppState()
         // A clean, representative "on" state. This is the same view the app shows;
         // we only choose which values it displays for the shot.
         controller.fillForRender(
@@ -46,7 +47,7 @@ func renderPanel(to path: String) {
 /// Renders the real Settings view to a PNG (light appearance), for previewing.
 func renderSettings(to path: String) {
     MainActor.assumeIsolated {
-        let controller = Controller()
+        let controller = AppState()
         let view = SettingsView(controller: controller, onClose: {})
             .background(Color(red: 0.96, green: 0.96, blue: 0.97))
             .environment(\.colorScheme, .light)

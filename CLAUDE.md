@@ -34,12 +34,14 @@ Clawake has two independent power layers. This split is the heart of the app.
    replaced the old `/etc/sudoers.d/clawake` approach entirely.
 
 The deep layer only engages when the user turned the "lid closed" setting **on**
-AND the daemon is registered and enabled. Otherwise the app still runs the light
-layer, so it is useful out of the box and never prompts unless you ask for
-lid-closed. `disablesleep` is a persistent system setting, so it survives the
-daemon/app exiting (that is the point); the app reconciles the real state on launch
-(`adoptDeepState`) to self-heal anything a crash left behind, and `uninstall`
-resets it through the daemon before unregistering.
+AND the daemon is registered and enabled. **Lid-closed is opt-in (default off)** so
+the app is fully functional out of the box on the light layer and never prompts for
+approval unless you ask for lid-closed. Turning the app On is never gated on the
+helper approval. `disablesleep` is a persistent system setting, so it survives a crash/force-quit;
+the app reconciles the real state on launch (`adoptDeepState`) to self-heal anything
+left behind. A normal **Quit restores sleep**: `shutdown()` reconciles the real
+state and then `releaseAll()` clears `SleepDisabled` (it must not stay set after the
+app exits), and `uninstall` resets it through the daemon before unregistering.
 
 ## Screen lock and the two editions
 
@@ -47,7 +49,7 @@ Separately from sleep, the app can keep the **display** awake via a
 `kIOPMAssertionTypePreventUserIdleDisplaySleep` assertion (no root, auto-released on
 process exit). While held, the screen stays on and never idle-locks. This is the
 "Don't lock the screen" option: config `preventLock` (default on), applied in
-`Controller.tick` only while the app is actually keeping the Mac awake.
+`AppState.tick` only while the app is actually keeping the Mac awake.
 
 Two editions, chosen at build time:
 - **Standard** (default): shows the "Don't lock the screen" toggle, on by default.
@@ -55,65 +57,99 @@ Two editions, chosen at build time:
 - **Enterprise** (`EDITION=enterprise ./build-app.sh` sets `Info.plist`
   `ClawakeEnterprise = true`, DMG named `Clawake-Enterprise-...`): hides the toggle
   and never prevents locking, so the screen still locks on the corporate schedule.
-  `Controller.isEnterprise` reads the plist flag and gates both the UI row and the
+  `AppState.isEnterprise` reads the plist flag and gates both the UI row and the
   display assertion. Both editions share the bundle id and the helper daemon.
 
-## Architecture (file by file)
+## Architecture (four SwiftPM targets)
 
-All source is in `Sources/Clawake/`.
+Defined in `Package.swift`. Dependencies point inward: the app links `ClawakeCore`
++ `ClawakeShared`; the daemon links `ClawakeShared`; Core and Shared link nothing
+(Foundation only). The app and the daemon never link each other, they agree only
+through `ClawakeShared`.
 
-- `main.swift` — `NSApplication` bootstrap; sets the `AppDelegate`.
-- `App.swift` — `AppDelegate`. Creates the `NSStatusItem` (car icon), the popover,
-  and the Settings window; runs a 5-second `Timer` that calls `controller.tick()`;
-  opens Settings on first launch (`!didOnboard`). Also `carIcon(active:)` and
-  `appVersion()`. The app is `.accessory` (LSUIElement) the whole time, so **no
-  Dock icon** ever.
-- `Model.swift` — pure logic, no side effects. `Mode` (on/off), `Decision`,
-  `decide(_:)` (the single decision function: off, battery floor, only-on-AC,
-  thermal pause, else awake with `deep = lidClosed`). Thermal helpers
-  (`ThermalLevel`, `atOrAboveCutoff`, `nextThermalPaused` hysteresis latch,
-  `thermalCutoff`, `thermalLabel`), and `parsePmsetBatt`.
-- `Config.swift` — `Config` (mode, lidClosed, pauseOnLowBattery, battery{min_percent,
-  only_on_ac}, thermal{protect, cutoff}, notifications, didOnboard) with **tolerant
-  decoding** (older config files missing new keys still load). `Paths`: config at
-  `~/.claude/plugins/clawake/config.json`.
-- `Controller.swift` — `ObservableObject` orchestrator + all published UI state.
-  `tick()` reads power and thermal, computes the `Decision`, applies it, and
-  publishes state (awake, isOn, statusTitle/detail, powerText, thermalText/level,
-  lidClosedOn, lidApprovalNeeded, and the settings mirrors). Setters save config and
-  re-tick. `approveLid` registers the `SMAppService` daemon (and opens Login Items
-  if approval is needed), then ticks. `uninstall()` resets sleep, unregisters the
-  daemon, and deletes the config. `adoptDeepState` reconciles a crash-left state.
-- `Power.swift` — `PowerController.apply(_:)` (light via IOPMAssertion, deep via
-  `setDeep`, single-flight + cooldown). `setDeep` now calls the privileged daemon
-  over XPC (`helper.setSleepDisabled`); `helperEnabled()` reports the daemon status.
-  Owns the `HelperClient`.
-- `HelperClient.swift` (app side) — registers/unregisters the `SMAppService` daemon
-  (`SMAppService.daemon(plistName:)`) and sends it XPC messages (`setSleepDisabled`,
+```
+ClawakeCore     pure logic, no AppKit/SwiftUI, unit-tested   (app depends on it)
+ClawakeShared   XPC protocol + constants                     (app + daemon share it)
+ClawakeHelper   the root daemon                              (depends on Shared)
+Clawake         the menu-bar app                             (depends on Core + Shared)
+```
+
+### `Sources/ClawakeCore/` — pure logic (public API, no side effects, no UI)
+
+This target **cannot import AppKit or SwiftUI** (the boundary is compiler-enforced),
+and it is covered by `Tests/ClawakeCoreTests/` (run `swift test`).
+
+- `Decision.swift` — `Mode` (on/off), `Decision`, `DecideInput`, and `decide(_:)`:
+  the single decision function (off, battery floor, only-on-AC, thermal pause, else
+  awake with `deep = lidClosed`).
+- `Thermal.swift` — `ThermalLevel`, `atOrAboveCutoff`, `nextThermalPaused`
+  (hysteresis latch), `thermalCutoff`, `thermalLabel`.
+- `PowerReading.swift` — `PowerReading` + `parsePmsetBatt`.
+- `Config.swift` — `Config` (mode, lidClosed, preventLock, pauseOnLowBattery,
+  battery{min_percent, only_on_ac}, thermal{protect, cutoff}, notifications,
+  didOnboard) with **tolerant decoding** (older config files missing new keys still
+  load; `lidClosed` defaults **off**). `Paths`: config at
+  `~/.claude/plugins/clawake/config.json`. `loadConfig` / `saveConfig`.
+
+### `Sources/Clawake/` — the app, grouped by feature/layer
+
+- `App/main.swift` — `NSApplication` bootstrap; sets the `AppDelegate`.
+- `App/App.swift` — `AppDelegate`. Creates the `NSStatusItem` (car icon), the
+  popover, and the Settings window; runs a 5-second `Timer` that calls
+  `appState.tick()`; opens the panel on first launch (`!didOnboard`). The app is
+  `.accessory` (LSUIElement) the whole time, so **no Dock icon** ever.
+- `App/AppState.swift` — the composition root: an `ObservableObject` orchestrator +
+  all published UI state (this was `Controller`). `tick()` reads power and thermal,
+  computes the `Decision`, applies it, and publishes state (awake, isOn,
+  statusTitle/detail, powerText, thermalText/level, lidClosedOn, lidApprovalNeeded,
+  the auto-off timer, and the settings mirrors). Setters save config and re-tick.
+  `approveLid` registers the `SMAppService` daemon (and opens Login Items if needed).
+  `shutdown()` reconciles then releases so Quit restores sleep. `uninstall()` resets
+  sleep, unregisters the daemon, deletes the config. `adoptDeepState` (on `power`)
+  reconciles a crash-left state.
+- `Power/Power.swift` — `PowerController.apply(_:)` (light via IOPMAssertion, deep via
+  `setDeep`, single-flight + cooldown; the off-path retries until confirmed).
+  `setDeep` calls the privileged daemon over XPC; `helperEnabled()` reports status.
+  Owns the `HelperClient`. Also `setKeepDisplayOn` (the "don't lock" assertion).
+- `Power/HelperClient.swift` — app side of the daemon: registers/unregisters the
+  `SMAppService.daemon(plistName:)` and sends XPC messages (`setSleepDisabled`,
   `ping`) with a short timeout.
-- `Sources/ClawakeShared/HelperProtocol.swift` — the `@objc ClawakeHelperProtocol`
-  XPC interface and shared `HelperConstants` (mach service name, team id, bundle
-  ids), compiled into both the app and the daemon.
-- `Sources/ClawakeHelper/main.swift` — the root daemon: an `NSXPCListener` on the
-  mach service that verifies each connection's code signature (our Developer ID team
-  + app bundle id via `SecCodeCheckValidity`) before running `pmset` as root.
-- `Sensors.swift` — `readThermal()` (`ProcessInfo.thermalState`), `readPower()`
+- `Power/Sensors.swift` — `readThermal()` (`ProcessInfo.thermalState`), `readPower()`
   (`pmset -g batt`).
-- `Popover.swift` — the menu-bar panel. `PanelStyle`, custom-drawn `BrandSwitch`
-  (orange On/Off switch) and `SegmentedPills` (see the render note below for why
-  these are custom), `PopoverController` (an `NSPopover`, `.transient`), and
-  `PopoverView` (header, hero On/Off card with the switch + status dot, an inline
-  **Approve** banner when lid-closed is on but not yet approved, an info block
-  showing **Power / Temperature / Lid closed**, and a Settings/Quit footer).
-- `Onboarding.swift` — the Settings window (also the first-run welcome). Note the
-  file is named `Onboarding.swift` but the types are `SettingsController` /
-  `SettingsView`. Rows: lid-closed, pause-on-low-battery (+ % pills), only-on-AC,
-  cool-down protection (+ Hot/Very-hot pills), Done footer. The window uses
+- `Power/Shell.swift` — `runProcess(_:_:)` wrapper around `Process`.
+- `MenuBar/Popover.swift` — `PanelStyle`, `PopoverController` (an `NSPopover`,
+  `.transient`), and `PopoverView` (header, hero On/Off card with the switch + status
+  dot, the auto-off countdown, an inline **Approve** banner when lid-closed is on but
+  not yet approved, an info block showing **Power / Temperature / Lid closed**, and a
+  Settings/Quit footer).
+- `Settings/Settings.swift` — the Settings window (also the first-run welcome). Types
+  are `SettingsController` / `SettingsView`. Rows: auto-off timer, lid-closed,
+  don't-lock (standard build), pause-on-low-battery (+ % pills), only-on-AC, cool-down
+  protection (+ Hot/Very-hot pills), Done footer. The window uses
   `NSHostingController.sizingOptions = [.preferredContentSize]` so it **fits its
-  content height** and re-fits when a section expands. It stays `.accessory` and is
-  brought forward with `activate(ignoringOtherApps:)` + `orderFrontRegardless()`
-  (never `.regular`, so it adds no Dock icon).
-- `Shell.swift` — `runProcess(_:_:)` wrapper around `Process`.
+  content height**. It stays `.accessory`, brought forward with
+  `activate(ignoringOtherApps:)` + `orderFrontRegardless()` (never `.regular`).
+- `UI/Controls.swift` — custom-drawn `BrandSwitch` (orange On/Off switch) and
+  `SegmentedPills` (see the render note below for why these are custom).
+- `UI/Icons.swift` — `carIcon(active:)` and `appVersion()`.
+- `Support/Render.swift` — `renderPanel` / `renderSettings` (marketing/preview PNGs).
+
+### `Sources/ClawakeShared/HelperProtocol.swift`
+
+The `@objc ClawakeHelperProtocol` XPC interface and shared `HelperConstants` (mach
+service name, team id, bundle ids), compiled into both the app and the daemon.
+
+### `Sources/ClawakeHelper/` — the root daemon
+
+- `main.swift` — bootstrap only: an `NSXPCListener` on the mach service.
+- `HelperService.swift` — the listener delegate + exported object: verifies each
+  connection's code signature (our Developer ID team + app bundle id via
+  `SecCodeCheckValidity`) before exposing the interface.
+- `SleepManager.swift` — the one privileged operation, `pmset -a disablesleep`,
+  isolated from the XPC/security code.
+
+### Build
+
 - `build-app.sh` — assembles `Clawake.app` (Info.plist with `LSUIElement`, copies
   the car icons + `AppIcon.icns`), ad-hoc codesigns, and builds the DMG with
   `hdiutil`. Icons come from `~/Documents/cc-caffeine/assets` in the original
@@ -211,8 +247,11 @@ variables, so no account details are hardcoded.
 - **No em dashes** in UI text or prose.
 - **Keep it professional**, not "vibe coded". Look at real product designs.
 - **Stay tiny and native.** Do not reach for Electron or heavy frameworks.
-- **Keep it simple: On / Off.** An earlier "follow Claude sessions" mode and timer
-  were deliberately removed. Do not reintroduce modes without being asked.
+- **Keep it simple: On / Off.** An earlier "follow Claude sessions" mode was
+  deliberately removed; do not reintroduce modes without being asked. There is a
+  simple **auto-off timer** (Settings: Until off / 30m / 1h / 2h) that flips the app
+  to Off when the countdown ends. It is a live session concept, not persisted; a
+  duration also turns the app On. Keep it; it was added at the user's request.
 - Adaptive light/dark everywhere (the panel and the Settings window both follow the
   system theme).
 </content>

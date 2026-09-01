@@ -5,9 +5,9 @@ import SwiftUI
 /// afterwards it opens from the panel's "Settings" button.
 final class SettingsController {
     private var window: NSWindow?
-    private let controller: Controller
+    private let controller: AppState
 
-    init(controller: Controller) { self.controller = controller }
+    init(controller: AppState) { self.controller = controller }
 
     func show() {
         if window == nil {
@@ -39,7 +39,7 @@ final class SettingsController {
 }
 
 struct SettingsView: View {
-    @ObservedObject var controller: Controller
+    @ObservedObject var controller: AppState
     let onClose: () -> Void
 
     private let orange = Color(red: 0.91, green: 0.52, blue: 0.29)
@@ -48,6 +48,7 @@ struct SettingsView: View {
     @ViewBuilder private var rows: some View {
         VStack(spacing: 14) {
             header
+            timerRow
             lidRow
             if !controller.isEnterprise { lockRow }
             batteryRow
@@ -96,6 +97,35 @@ struct SettingsView: View {
     }
 
     // MARK: rows
+
+    private var timerRow: some View {
+        let running = !controller.timerRemaining.isEmpty
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "timer").font(.system(size: 16))
+                    .foregroundColor(running ? orange : .secondary)
+                    .frame(width: 22, height: 22)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Auto-off timer").font(.system(size: 14, weight: .semibold))
+                    Text(running
+                        ? controller.timerRemaining
+                        : "Keep awake for a set time, then turn off by itself.")
+                        .font(.system(size: 12))
+                        .foregroundColor(running ? orange : .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+            }
+            SegmentedPills(
+                options: ["Until off", "30m", "1h", "2h"],
+                selected: controller.timerSelectionIndex,
+                onSelect: { controller.setTimer(index: $0) },
+                tint: orange)
+                .padding(.leading, 34)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.05)))
+    }
 
     private var lidRow: some View {
         settingRow(
