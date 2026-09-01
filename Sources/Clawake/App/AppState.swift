@@ -7,8 +7,6 @@ import ClawakeCore
 /// queue, so its state needs no locking.
 final class AppState: ObservableObject {
     let power = PowerController()
-    let licensing = Licensing()
-    private var cancellables = Set<AnyCancellable>()
 
     private var config: Config
     private var mode: Mode
@@ -54,11 +52,6 @@ final class AppState: ObservableObject {
     @Published private(set) var timerRemaining = ""
     @Published private(set) var timerSelectionIndex = 0
 
-    // Licensing mirrors (so panels can show trial/license state without importing
-    // the licensing types). `trialEnded` gates keep-awake entirely (hard stop).
-    @Published private(set) var trialEnded = false
-    @Published private(set) var trialDaysLeft: Int?
-
     /// Extra callback for the AppKit status-item icon (SwiftUI observes directly).
     var onChange: (() -> Void)?
 
@@ -67,18 +60,6 @@ final class AppState: ObservableObject {
         mode = config.mode
         isEnterprise = (Bundle.main.infoDictionary?["ClawakeEnterprise"] as? Bool) ?? false
         syncMirrors()
-        // Reflect license/trial state on the very first paint, before the first tick.
-        trialEnded = !licensing.isActive
-        trialDaysLeft = licensing.trialDaysLeft
-        // When the license/trial state changes (activation, expiry), re-publish and
-        // re-decide immediately so the hard stop engages or lifts without waiting.
-        licensing.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in
-                self?.objectWillChange.send()
-                self?.tick()
-            }
-            .store(in: &cancellables)
     }
 
     // MARK: mutations
@@ -209,17 +190,11 @@ final class AppState: ObservableObject {
         let lidActive = config.lidClosed && lidApproved
         let minPercent = config.pauseOnLowBattery ? config.battery.min_percent : 0
 
-        var decision = decide(
+        let decision = decide(
             DecideInput(
                 mode: mode, onBattery: p.onBattery, batteryPercent: p.percent,
                 minPercent: minPercent, onlyOnAC: config.battery.only_on_ac,
                 thermalPaused: thermalPaused, lidClosed: lidActive))
-
-        // Hard stop: once the trial has ended and no license is active, Clawake
-        // keeps nothing awake until a key is entered.
-        if !licensing.isActive {
-            decision = Decision(awake: false, deep: false, reason: "trial-ended")
-        }
 
         power.apply(decision)
         // "Don't lock" keeps the display on so the screen never locks. Never in the
@@ -236,8 +211,6 @@ final class AppState: ObservableObject {
         thermalText = thermalLabel(thermal)
         thermalLevelRaw = thermal.rawValue
         timerRemaining = timerDeadline.map { formatRemaining(Int($0.timeIntervalSinceNow.rounded())) } ?? ""
-        trialEnded = !licensing.isActive
-        trialDaysLeft = licensing.trialDaysLeft
         syncMirrors()
         (statusTitle, statusDetail) = describe(decision: decision, lidActive: lidActive)
 
@@ -294,7 +267,6 @@ final class AppState: ObservableObject {
             return ("Keeping your Mac awake", "Sleeps when you close the lid")
         }
         switch decision.reason {
-        case "trial-ended": return ("Trial ended", "Enter a license to keep using Clawake")
         case "thermal": return ("Paused to cool down", "Your Mac is running hot")
         case "battery-low": return ("Sleeping to save battery", "Battery is low")
         case "battery-only-ac": return ("Sleeping on battery", "Set to keep awake on AC only")
@@ -310,7 +282,7 @@ extension AppState {
     func fillForRender(
         isOn: Bool, awake: Bool, statusTitle: String, powerText: String,
         thermalText: String, thermalLevel: ThermalLevel, lidClosedOn: Bool,
-        trialEnded: Bool = false, trialDaysLeft: Int? = nil, lidApprovalNeeded: Bool = false
+        lidApprovalNeeded: Bool = false
     ) {
         self.isOn = isOn
         self.awake = awake
@@ -320,7 +292,5 @@ extension AppState {
         self.thermalLevelRaw = thermalLevel.rawValue
         self.lidClosedOn = lidClosedOn
         self.lidApprovalNeeded = lidApprovalNeeded
-        self.trialEnded = trialEnded
-        self.trialDaysLeft = trialDaysLeft
     }
 }

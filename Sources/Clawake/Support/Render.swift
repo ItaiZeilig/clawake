@@ -8,30 +8,12 @@ import ClawakeCore
 func renderPanel(to path: String) {
     MainActor.assumeIsolated {
         let controller = AppState()
-        // A clean, representative "on" state by default. `CLAWAKE_RENDER_STATE` lets
-        // us screenshot the other panel states to verify the toggle in each.
-        switch ProcessInfo.processInfo.environment["CLAWAKE_RENDER_STATE"] {
-        case "trial-ended":
-            controller.fillForRender(
-                isOn: true, awake: false, statusTitle: "Trial ended",
-                powerText: "AC power", thermalText: "Normal", thermalLevel: .nominal,
-                lidClosedOn: true, trialEnded: true)
-        case "battery-low":
-            controller.fillForRender(
-                isOn: true, awake: false, statusTitle: "Sleeping to save battery",
-                powerText: "Battery 12%", thermalText: "Normal", thermalLevel: .nominal,
-                lidClosedOn: false, trialDaysLeft: 21)
-        case "off":
-            controller.fillForRender(
-                isOn: false, awake: false, statusTitle: "Sleeping normally",
-                powerText: "AC power", thermalText: "Normal", thermalLevel: .nominal,
-                lidClosedOn: false, trialDaysLeft: 21)
-        default:
-            controller.fillForRender(
-                isOn: true, awake: true, statusTitle: "Keeping your Mac awake",
-                powerText: "Battery 84%", thermalText: "Normal",
-                thermalLevel: .nominal, lidClosedOn: true, trialDaysLeft: 21)
-        }
+        // A clean, representative "on" state. This is the same view the app shows;
+        // we only choose which values it displays for the shot.
+        controller.fillForRender(
+            isOn: true, awake: true, statusTitle: "Keeping your Mac awake",
+            powerText: "Battery 84%", thermalText: "Normal",
+            thermalLevel: .nominal, lidClosedOn: true)
 
         // The .solid style is a dark panel; the live app forces darkAqua so the
         // semantic text colors resolve light. ImageRenderer defaults to light, so

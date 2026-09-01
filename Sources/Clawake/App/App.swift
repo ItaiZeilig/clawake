@@ -53,7 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         controller.onChange = { [weak self] in self?.refreshIcon() }
         controller.power.adoptDeepState()  // clean up any SleepDisabled left by a crash/force-quit
-        controller.licensing.refresh()      // re-check the license (catches refunds/disables) in the background
         controller.tick()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.controller.tick()

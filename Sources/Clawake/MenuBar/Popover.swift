@@ -54,8 +54,7 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             header
             controlCard
-            if controller.trialEnded { trialBanner }
-            if controller.lidApprovalNeeded && !controller.trialEnded { approvalBanner }
+            if controller.lidApprovalNeeded { approvalBanner }
             infoSection
             Divider().opacity(style == .solid ? 0.25 : 1)
             footer
@@ -73,12 +72,6 @@ struct PopoverView: View {
             }
             Text("Clawake").font(.system(size: 14, weight: .semibold))
             Spacer()
-            if let d = controller.trialDaysLeft {
-                Text("Trial · \(d)d")
-                    .font(.system(size: 10, weight: .medium)).foregroundColor(orange)
-                    .padding(.horizontal, 7).padding(.vertical, 2)
-                    .background(Capsule().fill(orange.opacity(0.14)))
-            }
             Text("v\(appVersion())").font(.system(size: 10)).foregroundColor(.secondary)
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
@@ -86,14 +79,10 @@ struct PopoverView: View {
 
     // MARK: the hero control (big label + prominent switch)
 
-    /// Once the trial has ended the app can't keep anything awake, so the switch
-    /// reads Off and is disabled until a license is entered.
-    private var switchOn: Bool { controller.isOn && !controller.trialEnded }
-
     private var controlCard: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(switchOn ? "On" : "Off")
+                Text(controller.isOn ? "On" : "Off")
                     .font(.system(size: 20, weight: .bold))
                 HStack(spacing: 6) {
                     Circle().fill(dotColor).frame(width: 8, height: 8)
@@ -109,11 +98,9 @@ struct PopoverView: View {
             }
             Spacer()
             Button(action: { controller.setOn(!controller.isOn) }) {
-                BrandSwitch(isOn: switchOn, onColor: orange)
+                BrandSwitch(isOn: controller.isOn, onColor: orange)
             }
             .buttonStyle(.plain)
-            .disabled(controller.trialEnded)
-            .opacity(controller.trialEnded ? 0.4 : 1)
         }
         .padding(16)
         .background(
@@ -158,23 +145,6 @@ struct PopoverView: View {
         case ThermalLevel.fair.rawValue: return .primary
         default: return .secondary
         }
-    }
-
-    private var trialBanner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 12)).foregroundColor(.red)
-            Text("Trial ended").font(.system(size: 11, weight: .medium)).foregroundColor(.primary)
-            Spacer()
-            Button(action: onSetup) {
-                Text("Unlock").font(.system(size: 11, weight: .semibold)).foregroundColor(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.85)))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.red.opacity(0.10)))
-        .padding(.horizontal, 12).padding(.bottom, 10)
     }
 
     private var approvalBanner: some View {
