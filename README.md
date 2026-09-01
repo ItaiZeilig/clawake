@@ -63,7 +63,7 @@ bloat, no account.
 
 ```sh
 brew tap itaizeilig/tap
-brew install --cask clawake
+brew install clawake
 ```
 
 ### Direct download
@@ -114,8 +114,8 @@ open release/Clawake.app       # run it (icon appears in the menu bar)
 
 Xcode can open the folder directly (`File > Open`, or open `Package.swift`).
 
-To produce a signed, notarized release, set your Developer ID identity and a stored
-`notarytool` profile first:
+**Maintainers only** — to produce a signed, notarized release, set your Developer ID
+identity and a stored `notarytool` profile first:
 
 ```sh
 export DEVID_IDENTITY="Developer ID Application: Your Name (TEAMID)"
