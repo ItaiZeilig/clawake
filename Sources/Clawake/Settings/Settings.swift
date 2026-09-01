@@ -117,7 +117,7 @@ struct SettingsView: View {
                 Spacer(minLength: 8)
             }
             WrapPills(
-                options: ["Until off", "5m", "10m", "15m", "30m", "1h", "2h", "5h"],
+                options: ["Unlimited", "5m", "10m", "15m", "30m", "1h", "2h", "5h"],
                 selected: controller.timerSelectionIndex,
                 onSelect: { controller.setTimer(index: $0) },
                 tint: orange)
