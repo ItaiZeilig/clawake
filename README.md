@@ -59,6 +59,15 @@ bloat, no account.
 
 ## Install
 
+### Homebrew
+
+```sh
+brew tap itaizeilig/tap
+brew install --cask clawake
+```
+
+### Direct download
+
 **Download the DMG** from the [latest release](https://github.com/ItaiZeilig/clawake/releases/latest),
 open it, and drag Clawake to your Applications folder. The build is notarized by Apple
 (Developer ID), so it opens with no Gatekeeper warning.
