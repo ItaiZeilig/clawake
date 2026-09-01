@@ -86,10 +86,14 @@ struct PopoverView: View {
 
     // MARK: the hero control (big label + prominent switch)
 
+    /// Once the trial has ended the app can't keep anything awake, so the switch
+    /// reads Off and is disabled until a license is entered.
+    private var switchOn: Bool { controller.isOn && !controller.trialEnded }
+
     private var controlCard: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(controller.isOn ? "On" : "Off")
+                Text(switchOn ? "On" : "Off")
                     .font(.system(size: 20, weight: .bold))
                 HStack(spacing: 6) {
                     Circle().fill(dotColor).frame(width: 8, height: 8)
@@ -105,9 +109,11 @@ struct PopoverView: View {
             }
             Spacer()
             Button(action: { controller.setOn(!controller.isOn) }) {
-                BrandSwitch(isOn: controller.isOn, onColor: orange)
+                BrandSwitch(isOn: switchOn, onColor: orange)
             }
             .buttonStyle(.plain)
+            .disabled(controller.trialEnded)
+            .opacity(controller.trialEnded ? 0.4 : 1)
         }
         .padding(16)
         .background(
