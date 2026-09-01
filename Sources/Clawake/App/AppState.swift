@@ -15,8 +15,9 @@ final class AppState: ObservableObject {
 
     /// Auto-off timer. When set, `tick()` flips the app to Off once the deadline
     /// passes. It is a live session concept, not persisted: quitting ends it.
-    /// Minutes for each pill; index 0 ("Until off") means no countdown.
-    static let timerOptions = [0, 30, 60, 120]
+    /// Minutes for each pill; index 0 ("Until off") means no countdown. Matches
+    /// KeepingYouAwake's built-in durations (5m/10m/15m/30m/1h/2h/5h) plus indefinite.
+    static let timerOptions = [0, 5, 10, 15, 30, 60, 120, 300]
     private var timerDeadline: Date?
 
     // Published UI state (read by the popover / settings).
@@ -254,7 +255,7 @@ final class AppState: ObservableObject {
     private func formatRemaining(_ seconds: Int) -> String {
         let s = max(0, seconds)
         let h = s / 3600, m = (s % 3600) / 60
-        if h > 0 { return "\(h)h \(m)m left" }
+        if h > 0 { return m > 0 ? "\(h)h \(m)m left" : "\(h)h left" }
         if m > 0 { return "\(m)m left" }
         return "under a minute left"
     }
