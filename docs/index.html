@@ -74,12 +74,14 @@
 
   /* ---------- sticky nav ---------- */
   header {
-    position: sticky; top: 0; z-index: 50; border-bottom: 1px solid transparent;
-    /* Always keep a subtle top scrim so the nav stays legible over the hero photo. */
-    background: linear-gradient(to bottom, rgba(11,8,5,0.9), rgba(11,8,5,0));
-    transition: background .25s ease, border-color .25s ease, backdrop-filter .25s ease;
+    position: sticky; top: 0; z-index: 50;
+    /* Persistent solid bar so the nav is always clearly visible. */
+    background: rgba(16,11,7,0.95);
+    border-bottom: 1px solid var(--line-soft);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    transition: box-shadow .25s ease;
   }
-  header.scrolled { background: rgba(16,11,7,0.82); border-bottom-color: var(--line-soft); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  header.scrolled { box-shadow: 0 10px 30px -18px rgba(0,0,0,0.8); }
   .nav { display: flex; align-items: center; justify-content: space-between; height: 66px; }
   .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.015em; }
   .brand img { width: 30px; height: 30px; border-radius: 8px; }
