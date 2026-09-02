@@ -262,7 +262,7 @@ final class AppState: ObservableObject {
 
     private func describe(decision: Decision, lidActive: Bool) -> (String, String) {
         if decision.awake {
-            if lidActive { return ("Keeping your Mac awake", "Claude Code keeps running, lid closed") }
+            if lidActive { return ("Keeping your Mac awake", "Your session keeps running, lid closed") }
             if lidApprovalNeeded { return ("Keeping your Mac awake", "Approve to allow the lid closed") }
             return ("Keeping your Mac awake", "Sleeps when you close the lid")
         }

@@ -4,12 +4,12 @@
 
 # Clawake
 
-**Keep Claude Code running with the lid closed.**
+**Keep your Mac awake, even with the lid closed.**
 
-A tiny, native macOS menu bar app. Start a Claude Code session, shut the lid, and it keeps
-working: your agent run, build, local server, or SSH session stays alive while the Mac is
-closed in your bag or on your desk. Clawake keeps the whole Mac awake, so anything you
-leave running keeps going, and you can reconnect from anywhere.
+A tiny, native macOS menu bar app. Shut the lid and your Mac keeps working, so a Claude Code
+session, an agent run, a build, a local server, or an SSH connection stays alive instead of
+freezing when the Mac would sleep. It works with the lid closed (no external display needed),
+and you can reconnect from anywhere.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-1d1d1f?logo=apple&logoColor=white)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-f05138?logo=swift&logoColor=white)
