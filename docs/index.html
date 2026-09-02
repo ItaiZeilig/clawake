@@ -75,15 +75,17 @@
   /* ---------- sticky nav ---------- */
   header {
     position: sticky; top: 0; z-index: 50; border-bottom: 1px solid transparent;
+    /* Always keep a subtle top scrim so the nav stays legible over the hero photo. */
+    background: linear-gradient(to bottom, rgba(11,8,5,0.9), rgba(11,8,5,0));
     transition: background .25s ease, border-color .25s ease, backdrop-filter .25s ease;
   }
-  header.scrolled { background: rgba(16,11,7,0.72); border-bottom-color: var(--line-soft); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  header.scrolled { background: rgba(16,11,7,0.82); border-bottom-color: var(--line-soft); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   .nav { display: flex; align-items: center; justify-content: space-between; height: 66px; }
   .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.015em; }
   .brand img { width: 30px; height: 30px; border-radius: 8px; }
   .nav-links { display: flex; align-items: center; gap: 28px; }
-  .nav-links a.link { color: var(--muted); font-size: 15px; font-weight: 500; transition: color .2s ease; }
-  .nav-links a.link:hover { color: var(--ink); }
+  .nav-links a.link { color: var(--ink); opacity: 0.82; font-size: 15px; font-weight: 500; text-shadow: 0 1px 10px rgba(0,0,0,0.55); transition: opacity .2s ease; }
+  .nav-links a.link:hover { opacity: 1; }
   .nav-cta { padding: 8px 16px; font-size: 14px; border-radius: 10px; }
   @media (max-width: 620px) { .nav-links a.link { display: none; } }
 
