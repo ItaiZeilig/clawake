@@ -118,4 +118,11 @@ final class PowerController {
 
     /// Whether the privileged daemon is registered and approved.
     func helperEnabled() -> Bool { helper.isEnabled }
+
+    /// Whether the deep layer is confirmed engaged (disablesleep actually set).
+    var deepIsEngaged: Bool { deepEngaged }
+
+    /// Clear the deep-layer failure cooldown so the next `apply()` retries the pmset
+    /// op immediately. Used right after refreshing a poisoned helper registration.
+    func retryDeepNow() { deepCooldownUntil = .distantPast }
 }

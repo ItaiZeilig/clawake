@@ -54,7 +54,8 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             header
             controlCard
-            if controller.lidApprovalNeeded { approvalBanner }
+            if controller.lidNeedsInstall { installBanner }
+            else if controller.lidApprovalNeeded { approvalBanner }
             infoSection
             Divider().opacity(style == .solid ? 0.25 : 1)
             footer
@@ -160,6 +161,30 @@ struct PopoverView: View {
             Spacer()
             Button(action: { controller.approveLid { _ in } }) {
                 Text("Approve")
+                    .font(.system(size: 11, weight: .semibold)).foregroundColor(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(orange))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(orange.opacity(0.12)))
+        .padding(.horizontal, 12).padding(.bottom, 10)
+    }
+
+    /// Shown when lid-closed is wanted but the app is not in a real install location.
+    /// Registering the privileged helper from a DMG or download would poison the
+    /// registration, so we ask the user to move the app to Applications first.
+    private var installBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.app").font(.system(size: 12)).foregroundColor(orange)
+            Text("Move Clawake to Applications for lid-closed")
+                .font(.system(size: 11)).foregroundColor(.primary)
+            Spacer()
+            Button(action: {
+                NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+            }) {
+                Text("Show")
                     .font(.system(size: 11, weight: .semibold)).foregroundColor(.white)
                     .padding(.horizontal, 10).padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 6).fill(orange))

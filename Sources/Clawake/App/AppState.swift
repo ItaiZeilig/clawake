@@ -32,6 +32,10 @@ final class AppState: ObservableObject {
     // Lid-closed feature state.
     @Published private(set) var lidClosedOn = true       // the setting
     @Published private(set) var lidApprovalNeeded = false // wanted, but not approved yet
+    @Published private(set) var lidNeedsInstall = false   // can't register: not in /Applications
+
+    /// Bounds how often we try to refresh a poisoned helper registration.
+    private var deepHealCooldownUntil = Date.distantPast
 
     // Screen-lock feature state. In the enterprise build the app never prevents
     // locking and the toggle is hidden; `isEnterprise` gates both.
@@ -109,7 +113,20 @@ final class AppState: ObservableObject {
 
     /// Register the privileged daemon. macOS may require the user to enable it in
     /// Login Items; if so, open that pane. Completes true once it is enabled.
+    ///
+    /// We refuse to register unless the app is in a real install location. Registering
+    /// from a DMG or a build/download copy records a program path that later vanishes,
+    /// leaving a registration that shows "on" in Login Items but never launches
+    /// (launchd rejects it with EX_CONFIG). Surfacing "move to Applications" instead
+    /// is the honest, recoverable outcome.
     func approveLid(completion: @escaping (Bool) -> Void) {
+        guard HelperClient.appIsInstalled else {
+            lidNeedsInstall = true
+            tick()
+            completion(false)
+            return
+        }
+        lidNeedsInstall = false
         let status = power.helper.register()
         if status == .requiresApproval {
             power.helper.openLoginItemsSettings()
@@ -197,6 +214,7 @@ final class AppState: ObservableObject {
                 thermalPaused: thermalPaused, lidClosed: lidActive))
 
         power.apply(decision)
+        healHelperIfPoisoned(decision)
         // "Don't lock" keeps the display on so the screen never locks. Never in the
         // enterprise build, and only while the app is actually keeping the Mac awake.
         power.setKeepDisplayOn(decision.awake && !isEnterprise && config.preventLock)
@@ -237,6 +255,25 @@ final class AppState: ObservableObject {
         try? FileManager.default.removeItem(at: Paths.configDir)
     }
 
+    /// Recover a poisoned helper registration. Signature of the failure: the user
+    /// wants the deep layer, macOS reports the daemon `.enabled`, yet after `apply()`
+    /// the deep layer is still not engaged (launchd rejecting a stale program path
+    /// with EX_CONFIG). Re-registering from the installed bundle refreshes the record
+    /// so it launches. Bounded by a cooldown so we try at most once every few minutes,
+    /// and only from a real install location (registering from a DMG would re-poison).
+    private func healHelperIfPoisoned(_ decision: Decision) {
+        guard decision.awake, decision.deep, config.lidClosed,
+              power.helper.status == .enabled,
+              !power.deepIsEngaged,
+              HelperClient.appIsInstalled,
+              Date() >= deepHealCooldownUntil
+        else { return }
+        deepHealCooldownUntil = Date().addingTimeInterval(5 * 60)
+        NSLog("Clawake: helper enabled but deep layer not engaging; re-registering to refresh a stale record.")
+        _ = power.helper.reregister()
+        power.retryDeepNow()   // let the next tick attempt the pmset op immediately
+    }
+
     // MARK: helpers
 
     private func syncMirrors() {
@@ -262,7 +299,13 @@ final class AppState: ObservableObject {
 
     private func describe(decision: Decision, lidActive: Bool) -> (String, String) {
         if decision.awake {
-            if lidActive { return ("Keeping your Mac awake", "Your session keeps running, lid closed") }
+            // Claim "lid closed" only when the deep layer is actually engaged, not
+            // merely approved. An approved-but-poisoned helper leaves disablesleep
+            // unset, so saying it is working would be a lie.
+            if decision.deep && power.deepIsEngaged {
+                return ("Keeping your Mac awake", "Your session keeps running, lid closed")
+            }
+            if lidNeedsInstall { return ("Keeping your Mac awake", "Move Clawake to Applications for lid closed") }
             if lidApprovalNeeded { return ("Keeping your Mac awake", "Approve to allow the lid closed") }
             return ("Keeping your Mac awake", "Sleeps when you close the lid")
         }
