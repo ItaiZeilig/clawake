@@ -13,6 +13,21 @@ final class HelperClient {
     var status: SMAppService.Status { service.status }
     var isEnabled: Bool { service.status == .enabled }
 
+    /// Whether the running app sits in a stable install location. Registering the
+    /// privileged daemon from a DMG, a download, or a build copy records a program
+    /// path that disappears when the volume unmounts or that copy is replaced, which
+    /// poisons the registration: launchd then rejects every launch with EX_CONFIG
+    /// even though Login Items still shows the item "on". So we only ever register
+    /// from /Applications (or ~/Applications). A Gatekeeper translocated copy
+    /// (/AppTranslocation/) is never a real install location.
+    static var appIsInstalled: Bool {
+        let path = Bundle.main.bundlePath
+        if path.contains("/AppTranslocation/") { return false }
+        let userApps = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications").path + "/"
+        return path.hasPrefix("/Applications/") || path.hasPrefix(userApps)
+    }
+
     /// Register the daemon. Depending on macOS this either prompts for admin
     /// approval or leaves the status at `.requiresApproval` until the user enables
     /// it in Login Items. Returns the status after the attempt.
@@ -27,6 +42,15 @@ final class HelperClient {
     func unregister() -> Bool {
         do { try service.unregister(); return true }
         catch { NSLog("Clawake: helper unregister error: \(error.localizedDescription)"); return false }
+    }
+
+    /// Refresh a poisoned registration: drop the stale BTM record and register anew
+    /// from the current (installed) bundle, so the recorded program path matches what
+    /// is on disk. Recovers an install whose helper is `.enabled` but never launches.
+    @discardableResult
+    func reregister() -> SMAppService.Status {
+        _ = unregister()
+        return register()
     }
 
     func openLoginItemsSettings() { SMAppService.openSystemSettingsLoginItems() }
